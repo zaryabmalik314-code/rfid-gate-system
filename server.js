@@ -18,7 +18,7 @@ const upload = multer({ dest: UPLOAD_DIR });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('railway') ? { rejectUnauthorized: false } : false
+  ssl: false
 });
 
 async function query(sql, params = []) {
