@@ -286,6 +286,15 @@ function downloadTemplate() {
   a.click();
 }
 
+// --- RESET CAMPUS ---
+async function resetCampus() {
+  if (!confirm('Reset all students to "outside campus"? This clears the inside_campus flag for everyone.')) return;
+  const res = await fetch('/api/reset-campus', { method: 'POST' });
+  const data = await res.json();
+  alert(`Reset ${data.reset} students to outside.`);
+  loadStats();
+}
+
 // --- PAGINATION ---
 function renderPagination(containerId, totalPages, currentPage, onPageClick) {
   const container = document.getElementById(containerId);

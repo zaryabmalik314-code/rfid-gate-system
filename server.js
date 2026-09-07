@@ -352,6 +352,35 @@ app.get('/api/departments', async (req, res) => {
   res.json(depts.map(d => d.department));
 });
 
+// --- MANUAL RESET (admin) ---
+app.post('/api/reset-campus', async (req, res) => {
+  const result = await pool.query('UPDATE students SET inside_campus = FALSE WHERE inside_campus = TRUE');
+  res.json({ success: true, reset: result.rowCount });
+});
+
+// --- AUTO RESET at closing time (default 10 PM PKT = 17:00 UTC) ---
+const RESET_HOUR_UTC = parseInt(process.env.RESET_HOUR_UTC || '17');
+
+function scheduleNightlyReset() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(RESET_HOUR_UTC, 0, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+
+  const ms = next - now;
+  console.log(`  Next campus reset at ${next.toISOString()} (in ${Math.round(ms / 60000)} min)`);
+
+  setTimeout(async () => {
+    try {
+      const result = await pool.query('UPDATE students SET inside_campus = FALSE WHERE inside_campus = TRUE');
+      console.log(`[AUTO-RESET] ${new Date().toISOString()} — Reset ${result.rowCount} students to outside`);
+    } catch (e) {
+      console.error('[AUTO-RESET] Failed:', e.message);
+    }
+    scheduleNightlyReset();
+  }, ms);
+}
+
 // --- INIT DB & START ---
 async function start() {
   await pool.query(`
@@ -429,8 +458,10 @@ async function start() {
 
   app.listen(PORT, () => {
     console.log(`\n  LGU Smart Gate System running on port ${PORT}`);
-    console.log(`  Gate Kiosk:       http://localhost:${PORT}/`);
-    console.log(`  Admin Dashboard:  http://localhost:${PORT}/admin.html\n`);
+    console.log(`  Gate Kiosk (Entry): http://localhost:${PORT}/`);
+    console.log(`  Gate Kiosk (Exit):  http://localhost:${PORT}/?mode=exit`);
+    console.log(`  Admin Dashboard:    http://localhost:${PORT}/admin.html\n`);
+    scheduleNightlyReset();
   });
 }
 

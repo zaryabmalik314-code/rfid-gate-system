@@ -48,6 +48,19 @@ header {
 
 .link-kiosk:hover { color: var(--blue); }
 
+.btn-reset {
+  background: var(--orange);
+  color: #000;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.btn-reset:hover { opacity: 0.85; }
+
 /* STATS */
 .stats-grid {
   display: grid;
