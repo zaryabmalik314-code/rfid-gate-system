@@ -109,8 +109,9 @@ function showResult(data) {
   idleView.classList.add('hidden');
   resultView.classList.remove('hidden');
 
-  banner.className = 'result-banner ' + data.result;
-  document.getElementById('result-icon').textContent = data.result === 'allowed' ? '✅' : data.result === 'denied' ? '🚫' : '⚠️';
+  const isExit = data.mode === 'exit' && data.result === 'allowed';
+  banner.className = 'result-banner ' + (isExit ? 'exit' : data.result);
+  document.getElementById('result-icon').textContent = isExit ? '👋' : data.result === 'allowed' ? '✅' : data.result === 'denied' ? '🚫' : '⚠️';
   document.getElementById('result-text').textContent = data.message;
 
   if (data.found && data.student) {

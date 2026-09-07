@@ -35,16 +35,32 @@ async function run(sql, params = []) {
   await pool.query(sql, params);
 }
 
+// --- COOLDOWN (3 min per card to prevent double-tap bypass) ---
+const COOLDOWN_MS = parseInt(process.env.SCAN_COOLDOWN_MS || '180000');
+const lastScanTime = new Map();
+
 // --- SCAN ENDPOINT ---
 app.post('/api/scan', async (req, res) => {
-  const { card_uid, mode } = req.body;
-  const scanMode = mode === 'exit' ? 'exit' : 'entry';
+  const { card_uid } = req.body;
 
   if (!card_uid || !card_uid.trim()) {
     return res.json({ found: false, result: 'unknown', message: 'No card UID provided' });
   }
 
   const uid = card_uid.trim().toUpperCase();
+
+  // Cooldown check (before even hitting DB)
+  const now = Date.now();
+  const lastScan = lastScanTime.get(uid);
+  if (lastScan && (now - lastScan) < COOLDOWN_MS) {
+    const remainSec = Math.ceil((COOLDOWN_MS - (now - lastScan)) / 1000);
+    return res.json({
+      found: false, result: 'denied',
+      message: `PLEASE WAIT ${remainSec}s — COOLDOWN ACTIVE`,
+      cooldown: true
+    });
+  }
+
   const student = await queryOne(
     `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
@@ -59,24 +75,21 @@ app.post('/api/scan', async (req, res) => {
     await run(
       `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
        VALUES ($1, NULL, NULL, NULL, NULL, $2, $3)`,
-      [uid, result, scanMode]
+      [uid, result, 'entry']
     );
     return res.json({ found: false, result, message });
   }
 
+  // Auto-detect direction based on inside_campus flag
+  const scanMode = student.inside_campus ? 'exit' : 'entry';
   const currentYear = new Date().getFullYear();
   const isExpired = student.expiry_year && currentYear > student.expiry_year;
 
   if (scanMode === 'exit') {
-    if (!student.inside_campus) {
-      result = 'denied';
-      message = 'NOT CHECKED IN — CANNOT EXIT';
-    } else {
-      result = 'allowed';
-      message = 'EXIT RECORDED — GOODBYE';
-      await run('UPDATE students SET inside_campus = FALSE WHERE id = $1', [student.id]);
-      student.inside_campus = false;
-    }
+    result = 'allowed';
+    message = 'EXIT RECORDED — GOODBYE';
+    await run('UPDATE students SET inside_campus = FALSE WHERE id = $1', [student.id]);
+    student.inside_campus = false;
   } else if (isExpired) {
     result = 'denied';
     message = `CARD EXPIRED (${student.enrollment_year}-${student.expiry_year}) — ENTRY DENIED`;
@@ -90,15 +103,15 @@ app.post('/api/scan', async (req, res) => {
       dropped: 'DROPPED OUT — ENTRY DENIED'
     };
     message = statusLabels[student.status] || 'ENTRY DENIED';
-  } else if (student.inside_campus) {
-    result = 'denied';
-    message = 'ALREADY INSIDE CAMPUS — CARD SHARING DETECTED';
   } else {
     result = 'allowed';
     message = 'ACTIVE STUDENT — ENTRY ALLOWED';
     await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
     student.inside_campus = true;
   }
+
+  // Set cooldown AFTER successful scan
+  lastScanTime.set(uid, now);
 
   await run(
     `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)

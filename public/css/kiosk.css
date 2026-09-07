@@ -208,6 +208,13 @@ html, body {
   border-bottom: 4px solid var(--red);
 }
 
+.result-banner.exit {
+  background: rgba(41, 121, 255, 0.15);
+  color: var(--blue);
+  box-shadow: inset 0 0 60px rgba(41, 121, 255, 0.3);
+  border-bottom: 4px solid var(--blue);
+}
+
 .result-banner.unknown {
   background: #2e1800;
   color: var(--orange);
