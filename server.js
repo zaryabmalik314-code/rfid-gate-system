@@ -37,14 +37,16 @@ async function run(sql, params = []) {
 
 // --- SCAN ENDPOINT ---
 app.post('/api/scan', async (req, res) => {
-  const { card_uid } = req.body;
+  const { card_uid, mode } = req.body;
+  const scanMode = mode === 'exit' ? 'exit' : 'entry';
+
   if (!card_uid || !card_uid.trim()) {
     return res.json({ found: false, result: 'unknown', message: 'No card UID provided' });
   }
 
   const uid = card_uid.trim().toUpperCase();
   const student = await queryOne(
-    `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year
+    `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
     [uid]
   );
@@ -55,9 +57,9 @@ app.post('/api/scan', async (req, res) => {
     result = 'unknown';
     message = 'UNREGISTERED CARD';
     await run(
-      `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result)
-       VALUES ($1, NULL, NULL, NULL, NULL, $2)`,
-      [uid, result]
+      `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
+       VALUES ($1, NULL, NULL, NULL, NULL, $2, $3)`,
+      [uid, result, scanMode]
     );
     return res.json({ found: false, result, message });
   }
@@ -65,14 +67,21 @@ app.post('/api/scan', async (req, res) => {
   const currentYear = new Date().getFullYear();
   const isExpired = student.expiry_year && currentYear > student.expiry_year;
 
-  if (isExpired) {
+  if (scanMode === 'exit') {
+    if (!student.inside_campus) {
+      result = 'denied';
+      message = 'NOT CHECKED IN — CANNOT EXIT';
+    } else {
+      result = 'allowed';
+      message = 'EXIT RECORDED — GOODBYE';
+      await run('UPDATE students SET inside_campus = FALSE WHERE id = $1', [student.id]);
+      student.inside_campus = false;
+    }
+  } else if (isExpired) {
     result = 'denied';
     message = `CARD EXPIRED (${student.enrollment_year}-${student.expiry_year}) — ENTRY DENIED`;
     student.status = 'expired';
-  } else if (student.status === 'active') {
-    result = 'allowed';
-    message = 'ACTIVE STUDENT — ENTRY ALLOWED';
-  } else {
+  } else if (student.status !== 'active') {
     result = 'denied';
     const statusLabels = {
       graduated: 'GRADUATED — NO LONGER ENROLLED',
@@ -81,15 +90,23 @@ app.post('/api/scan', async (req, res) => {
       dropped: 'DROPPED OUT — ENTRY DENIED'
     };
     message = statusLabels[student.status] || 'ENTRY DENIED';
+  } else if (student.inside_campus) {
+    result = 'denied';
+    message = 'ALREADY INSIDE CAMPUS — CARD SHARING DETECTED';
+  } else {
+    result = 'allowed';
+    message = 'ACTIVE STUDENT — ENTRY ALLOWED';
+    await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
+    student.inside_campus = true;
   }
 
   await run(
-    `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [student.card_uid, student.id, student.name, student.roll_number, student.status, result]
+    `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode]
   );
 
-  res.json({ found: true, result, message, student });
+  res.json({ found: true, result, message, student, mode: scanMode });
 });
 
 // --- STUDENTS CRUD ---
@@ -319,10 +336,13 @@ app.get('/api/stats', async (req, res) => {
   const allowedToday = (await queryOne("SELECT COUNT(*) as c FROM entry_logs WHERE DATE(timestamp) = $1 AND result='allowed'", [today])).c;
   const deniedToday = (await queryOne("SELECT COUNT(*) as c FROM entry_logs WHERE DATE(timestamp) = $1 AND result='denied'", [today])).c;
 
+  const insideCampus = (await queryOne("SELECT COUNT(*) as c FROM students WHERE inside_campus = TRUE")).c;
+
   res.json({
     total: parseInt(total), active: parseInt(active), graduated: parseInt(graduated),
     frozen: parseInt(frozen), suspended: parseInt(suspended), dropped: parseInt(dropped),
-    entriesToday: parseInt(entriesToday), allowedToday: parseInt(allowedToday), deniedToday: parseInt(deniedToday)
+    entriesToday: parseInt(entriesToday), allowedToday: parseInt(allowedToday), deniedToday: parseInt(deniedToday),
+    insideCampus: parseInt(insideCampus)
   });
 });
 
@@ -347,9 +367,12 @@ async function start() {
       photo_url TEXT,
       enrollment_year INTEGER,
       expiry_year INTEGER,
+      inside_campus BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  try { await pool.query('ALTER TABLE students ADD COLUMN inside_campus BOOLEAN DEFAULT FALSE'); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_card_uid ON students(card_uid)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_roll_number ON students(roll_number)');
@@ -366,9 +389,12 @@ async function start() {
       roll_number TEXT,
       status_at_entry TEXT,
       result TEXT NOT NULL,
+      scan_mode TEXT DEFAULT 'entry',
       timestamp TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  try { await pool.query("ALTER TABLE entry_logs ADD COLUMN scan_mode TEXT DEFAULT 'entry'"); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON entry_logs(timestamp)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_result ON entry_logs(result)');

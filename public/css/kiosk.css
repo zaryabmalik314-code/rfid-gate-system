@@ -60,6 +60,28 @@ html, body {
   margin-top: 4px;
 }
 
+.gate-mode {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.gate-entry {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green);
+}
+
+.gate-exit {
+  background: rgba(41, 121, 255, 0.1);
+  color: var(--blue);
+  border: 1px solid var(--blue);
+}
+
 /* SCAN PROMPT */
 .scan-prompt {
   flex: 1;

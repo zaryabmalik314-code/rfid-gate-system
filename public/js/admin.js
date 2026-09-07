@@ -30,6 +30,7 @@ async function loadStats() {
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.graduated}</div><div class="stat-label">Graduated</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${s.frozen}</div><div class="stat-label">Frozen</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.suspended + s.dropped}</div><div class="stat-label">Suspended/Dropped</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.insideCampus || 0}</div><div class="stat-label">Inside Campus</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${s.entriesToday}</div><div class="stat-label">Entries Today</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.allowedToday}</div><div class="stat-label">Allowed Today</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.deniedToday}</div><div class="stat-label">Denied Today</div></div>

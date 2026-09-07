@@ -2,6 +2,10 @@ let RESET_DELAY = 5000;
 let resetTimer = null;
 let todayEntries = 0;
 
+// --- GATE MODE (entry or exit, from URL ?mode=exit) ---
+const urlParams = new URLSearchParams(window.location.search);
+const GATE_MODE = urlParams.get('mode') === 'exit' ? 'exit' : 'entry';
+
 // --- AUDIO ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -63,6 +67,9 @@ async function updateEntryCount() {
     const data = await res.json();
     todayEntries = data.entriesToday;
     document.getElementById('entry-count').textContent = todayEntries;
+    if (document.getElementById('inside-count')) {
+      document.getElementById('inside-count').textContent = data.insideCampus || 0;
+    }
   } catch (e) {}
 }
 updateEntryCount();
@@ -79,7 +86,7 @@ async function handleScan() {
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_uid: uid })
+      body: JSON.stringify({ card_uid: uid, mode: GATE_MODE })
     });
     const data = await res.json();
     showResult(data);
@@ -147,9 +154,10 @@ function showResult(data) {
   // Sound
   playBeep(data.result);
 
-  // Update entry count
+  // Update counts
   todayEntries++;
   document.getElementById('entry-count').textContent = todayEntries;
+  updateEntryCount();
 
   // Countdown bar
   countdownFill.style.transition = 'none';
@@ -171,6 +179,13 @@ function resetToIdle() {
 
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
+  // Set gate mode label
+  const modeLabel = document.getElementById('gate-mode-label');
+  if (modeLabel) {
+    modeLabel.textContent = GATE_MODE === 'exit' ? 'EXIT GATE' : 'ENTRY GATE';
+    modeLabel.className = 'gate-mode ' + (GATE_MODE === 'exit' ? 'gate-exit' : 'gate-entry');
+  }
+
   document.getElementById('scan-btn').addEventListener('click', handleScan);
 
   document.getElementById('card-input').addEventListener('keydown', (e) => {
