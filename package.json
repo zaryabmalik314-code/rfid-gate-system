@@ -1,0 +1,16 @@
+{
+  "name": "rfid-gate-system",
+  "version": "1.0.0",
+  "description": "LGU Smart Gate Verification System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node database/init.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.0",
+    "xlsx": "^0.18.5"
+  }
+}

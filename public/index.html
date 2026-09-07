@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LGU Smart Gate</title>
+  <link rel="stylesheet" href="css/kiosk.css">
+</head>
+<body>
+  <div id="app" class="screen idle-screen">
+    <!-- IDLE STATE -->
+    <div id="idle-view">
+      <div class="top-bar">
+        <div class="uni-name">LAHORE GARRISON UNIVERSITY</div>
+        <div class="system-name">Smart Gate Verification System</div>
+      </div>
+      <div class="scan-prompt">
+        <div class="scan-icon">
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="2" width="6" height="6" rx="1"/>
+            <rect x="16" y="2" width="6" height="6" rx="1"/>
+            <rect x="2" y="16" width="6" height="6" rx="1"/>
+            <rect x="16" y="16" width="6" height="6" rx="1"/>
+            <rect x="8" y="8" width="8" height="8" rx="1"/>
+          </svg>
+        </div>
+        <div class="scan-text">TAP YOUR CARD</div>
+        <div class="scan-subtext">Place your university ID card on the reader</div>
+        <div class="manual-input">
+          <input type="text" id="card-input" placeholder="Card UID / Roll Number" autocomplete="off" autofocus>
+          <button id="scan-btn">VERIFY</button>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <div class="clock" id="clock"></div>
+        <div class="entry-count">Today's Entries: <span id="entry-count">0</span></div>
+      </div>
+    </div>
+
+    <!-- RESULT STATE -->
+    <div id="result-view" class="hidden">
+      <div class="result-banner" id="result-banner">
+        <div class="result-icon" id="result-icon"></div>
+        <div class="result-text" id="result-text"></div>
+      </div>
+      <div class="student-card" id="student-card">
+        <img id="student-photo" src="" alt="Student Photo" class="student-photo">
+        <div class="student-info">
+          <div class="student-name" id="student-name"></div>
+          <div class="info-grid">
+            <div class="info-item"><span class="info-label">Roll No</span><span class="info-value" id="student-roll"></span></div>
+            <div class="info-item"><span class="info-label">Department</span><span class="info-value" id="student-dept"></span></div>
+            <div class="info-item"><span class="info-label">Semester</span><span class="info-value" id="student-sem"></span></div>
+            <div class="info-item"><span class="info-label">Section</span><span class="info-value" id="student-sec"></span></div>
+            <div class="info-item"><span class="info-label">Status</span><span class="info-value" id="student-status"></span></div>
+            <div class="info-item"><span class="info-label">Valid Period</span><span class="info-value" id="student-validity"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="unknown-card hidden" id="unknown-card">
+        <div class="unknown-icon">⚠️</div>
+        <div class="unknown-text">UNREGISTERED CARD</div>
+        <div class="unknown-subtext">This card is not in the system</div>
+      </div>
+      <div class="countdown-bar">
+        <div class="countdown-fill" id="countdown-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/kiosk.js"></script>
+</body>
+</html>

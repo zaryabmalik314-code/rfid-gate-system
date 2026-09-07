@@ -1,0 +1,5 @@
+node_modules/
+uploads/
+database/gate.db
+database/students_6200.csv
+.env

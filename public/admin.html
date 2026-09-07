@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LGU Gate Admin</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <div class="header-left">
+        <h1>LGU Gate Admin</h1>
+        <a href="/" class="link-kiosk" target="_blank">Open Gate Kiosk →</a>
+      </div>
+    </header>
+
+    <!-- STATS -->
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('students')">Students</button>
+      <button class="tab" onclick="switchTab('logs')">Entry Logs</button>
+      <button class="tab" onclick="switchTab('import')">Import / Export</button>
+    </div>
+
+    <!-- STUDENTS TAB -->
+    <div id="tab-students" class="tab-content active">
+      <div class="toolbar">
+        <input type="text" id="search-input" placeholder="Search name, roll no, card UID..." oninput="debounceSearch()">
+        <select id="filter-status" onchange="loadStudents()">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="graduated">Graduated</option>
+          <option value="frozen">Frozen</option>
+          <option value="suspended">Suspended</option>
+          <option value="dropped">Dropped</option>
+        </select>
+        <select id="filter-dept" onchange="loadStudents()">
+          <option value="">All Departments</option>
+        </select>
+        <button class="btn-primary" onclick="showAddModal()">+ Add Student</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Photo</th>
+              <th>Name</th>
+              <th>Roll No</th>
+              <th>Card UID</th>
+              <th>Department</th>
+              <th>Semester</th>
+              <th>Section</th>
+              <th>Valid</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="students-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="students-pagination"></div>
+    </div>
+
+    <!-- LOGS TAB -->
+    <div id="tab-logs" class="tab-content">
+      <div class="toolbar">
+        <input type="date" id="log-date" onchange="loadLogs()">
+        <select id="log-result" onchange="loadLogs()">
+          <option value="">All Results</option>
+          <option value="allowed">Allowed</option>
+          <option value="denied">Denied</option>
+          <option value="unknown">Unknown</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Card UID</th>
+              <th>Student</th>
+              <th>Roll No</th>
+              <th>Status</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody id="logs-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="logs-pagination"></div>
+    </div>
+
+    <!-- IMPORT TAB -->
+    <div id="tab-import" class="tab-content">
+      <div class="import-section">
+        <h2>Import Students (Excel / CSV)</h2>
+        <p>Upload an Excel or CSV file with columns: <code>card_uid</code>, <code>name</code>, <code>roll_number</code>, <code>department</code>, <code>semester</code>, <code>section</code>, <code>status</code></p>
+        <p>Existing students with the same card_uid will be updated.</p>
+        <form id="import-form" onsubmit="handleImport(event)">
+          <input type="file" id="import-file" accept=".xlsx,.xls,.csv" required>
+          <button type="submit" class="btn-primary">Upload & Import</button>
+        </form>
+        <div id="import-result" class="import-result hidden"></div>
+      </div>
+
+      <div class="import-section">
+        <h2>Bulk Status Update</h2>
+        <p>Upload an Excel/CSV with <code>roll_number</code> (or <code>card_uid</code>) column. Optionally include a <code>status</code> column per row, or select a status below to apply to all.</p>
+        <form id="bulk-status-form" onsubmit="handleBulkStatus(event)">
+          <div class="form-row">
+            <select id="bulk-status-select">
+              <option value="frozen">Frozen</option>
+              <option value="graduated">Graduated</option>
+              <option value="suspended">Suspended</option>
+              <option value="dropped">Dropped</option>
+              <option value="active">Active</option>
+            </select>
+            <input type="file" id="bulk-status-file" accept=".xlsx,.xls,.csv" required>
+            <button type="submit" class="btn-primary">Update Statuses</button>
+          </div>
+        </form>
+        <div id="bulk-result" class="import-result hidden"></div>
+      </div>
+
+      <div class="import-section">
+        <h2>Download Template</h2>
+        <p>Download a sample Excel template for importing students.</p>
+        <button class="btn-secondary" onclick="downloadTemplate()">Download Template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD/EDIT MODAL -->
+  <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h2 id="modal-title">Add Student</h2>
+      <form id="student-form" onsubmit="handleStudentSubmit(event)">
+        <input type="hidden" id="edit-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Card UID</label>
+            <input type="text" id="f-card-uid" required placeholder="e.g. LGU-2024-001">
+          </div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="f-name" required placeholder="Student full name">
+          </div>
+          <div class="form-group">
+            <label>Roll Number</label>
+            <input type="text" id="f-roll" required placeholder="e.g. 069">
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <input type="text" id="f-dept" required placeholder="e.g. BS-CMAI" list="dept-list">
+            <datalist id="dept-list">
+              <option value="BS-CMAI">
+              <option value="BS-CS">
+              <option value="BBA">
+              <option value="BS-EE">
+              <option value="BS-SE">
+              <option value="BS-AI">
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label>Semester</label>
+            <input type="number" id="f-sem" required min="1" max="8" value="1">
+          </div>
+          <div class="form-group">
+            <label>Section</label>
+            <input type="text" id="f-sec" value="A" placeholder="A">
+          </div>
+          <div class="form-group">
+            <label>Enrollment Year</label>
+            <input type="number" id="f-enroll" min="2015" max="2035" placeholder="e.g. 2025">
+          </div>
+          <div class="form-group">
+            <label>Expiry Year</label>
+            <input type="number" id="f-expiry" min="2015" max="2040" placeholder="e.g. 2029">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="f-status">
+              <option value="active">Active</option>
+              <option value="graduated">Graduated</option>
+              <option value="frozen">Frozen</option>
+              <option value="suspended">Suspended</option>
+              <option value="dropped">Dropped</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
