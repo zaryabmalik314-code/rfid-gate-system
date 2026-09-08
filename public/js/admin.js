@@ -2,11 +2,81 @@ let currentStudentPage = 1;
 let currentLogPage = 1;
 let searchTimeout = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+function getToken() { return sessionStorage.getItem('admin_token'); }
+
+function authHeaders() {
+  return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' };
+}
+
+async function authFetch(url, opts = {}) {
+  if (!opts.headers) opts.headers = {};
+  if (opts.headers instanceof Headers) {
+    opts.headers.set('Authorization', `Bearer ${getToken()}`);
+  } else {
+    opts.headers['Authorization'] = `Bearer ${getToken()}`;
+  }
+  if (opts.body instanceof FormData) delete opts.headers['Content-Type'];
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    sessionStorage.removeItem('admin_token');
+    showLogin();
+    throw new Error('Session expired');
+  }
+  return res;
+}
+
+function showLogin() {
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('admin-layout').classList.add('hidden');
+  document.getElementById('login-password').focus();
+}
+
+function showAdmin() {
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('admin-layout').classList.remove('hidden');
   loadStats();
   loadStudents();
   loadDepartments();
-  setInterval(loadStats, 30000);
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const pw = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+    if (data.token) {
+      sessionStorage.setItem('admin_token', data.token);
+      showAdmin();
+    } else {
+      errEl.textContent = data.error || 'Wrong password';
+      errEl.classList.remove('hidden');
+    }
+  } catch (err) {
+    errEl.textContent = 'Connection error';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function handleLogout() {
+  try { await fetch('/api/admin/logout', { method: 'POST', headers: authHeaders() }); } catch(e) {}
+  sessionStorage.removeItem('admin_token');
+  showLogin();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (getToken()) {
+    showAdmin();
+  } else {
+    showLogin();
+  }
+  setInterval(() => { if (getToken()) loadStats(); }, 30000);
 });
 
 // --- TABS ---
@@ -20,7 +90,7 @@ function switchTab(tab) {
 
 // --- STATS ---
 async function loadStats() {
-  const res = await fetch('/api/stats');
+  const res = await authFetch('/api/stats');
   const s = await res.json();
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card"><div class="stat-value" style="color:var(--accent)">${s.total}</div><div class="stat-label">Total Students</div></div>
@@ -47,7 +117,7 @@ async function loadStudents(page = currentStudentPage) {
   if (status) params.set('status', status);
   if (dept) params.set('department', dept);
 
-  const res = await fetch(`/api/students?${params}`);
+  const res = await authFetch(`/api/students?${params}`);
   const data = await res.json();
 
   const tbody = document.getElementById('students-tbody');
@@ -93,7 +163,7 @@ function debounceSearch() {
 }
 
 async function loadDepartments() {
-  const res = await fetch('/api/departments');
+  const res = await authFetch('/api/departments');
   const depts = await res.json();
   const select = document.getElementById('filter-dept');
   depts.forEach(d => {
@@ -105,7 +175,7 @@ async function loadDepartments() {
 }
 
 async function updateStatus(id, status) {
-  await fetch(`/api/students/${id}/status`, {
+  await authFetch(`/api/students/${id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
@@ -115,7 +185,7 @@ async function updateStatus(id, status) {
 
 async function deleteStudent(id, name) {
   if (!confirm(`Delete student "${name}"? This cannot be undone.`)) return;
-  await fetch(`/api/students/${id}`, { method: 'DELETE' });
+  await authFetch(`/api/students/${id}`, { method: 'DELETE' });
   loadStudents();
   loadStats();
 }
@@ -165,7 +235,7 @@ async function handleStudentSubmit(e) {
   const url = id ? `/api/students/${id}` : '/api/students';
   const method = id ? 'PUT' : 'POST';
 
-  const res = await fetch(url, {
+  const res = await authFetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -191,12 +261,12 @@ async function loadLogs(page = currentLogPage) {
   if (date) params.set('date', date);
   if (result) params.set('result', result);
 
-  const res = await fetch(`/api/logs?${params}`);
+  const res = await authFetch(`/api/logs?${params}`);
   const data = await res.json();
 
   const tbody = document.getElementById('logs-tbody');
   if (data.logs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
   } else {
     tbody.innerHTML = data.logs.map(l => {
       const dt = new Date(l.timestamp + 'Z');
@@ -208,6 +278,7 @@ async function loadLogs(page = currentLogPage) {
           <td style="font-size:11px;color:var(--muted)">${l.card_uid}</td>
           <td>${l.student_name || '—'}</td>
           <td>${l.roll_number || '—'}</td>
+          <td style="font-size:11px;color:var(--muted)">${l.gate_id || 'gate-1'}</td>
           <td><span class="badge badge-${mode}">${mode}</span></td>
           <td>${l.status_at_entry ? `<span class="badge badge-${l.status_at_entry}">${l.status_at_entry}</span>` : '—'}</td>
           <td><span class="badge badge-${l.result}">${l.result}</span></td>
@@ -232,7 +303,7 @@ async function handleImport(e) {
   resultDiv.classList.remove('hidden', 'success', 'error');
   resultDiv.textContent = 'Importing...';
 
-  const res = await fetch('/api/students/import', { method: 'POST', body: formData });
+  const res = await authFetch('/api/students/import', { method: 'POST', body: formData });
   const data = await res.json();
 
   if (data.success) {
@@ -261,7 +332,7 @@ async function handleBulkStatus(e) {
   resultDiv.classList.remove('hidden', 'success', 'error');
   resultDiv.textContent = 'Updating...';
 
-  const res = await fetch('/api/students/bulk-status', { method: 'POST', body: formData });
+  const res = await authFetch('/api/students/bulk-status', { method: 'POST', body: formData });
   const data = await res.json();
 
   if (data.success) {
@@ -289,7 +360,7 @@ function downloadTemplate() {
 // --- RESET ---
 async function resetCampus() {
   if (!confirm('Reset all students to "outside campus"? This clears the inside_campus flag for everyone.')) return;
-  const res = await fetch('/api/reset-campus', { method: 'POST' });
+  const res = await authFetch('/api/reset-campus', { method: 'POST' });
   const data = await res.json();
   alert(`Reset ${data.reset} students to outside.`);
   loadStats();

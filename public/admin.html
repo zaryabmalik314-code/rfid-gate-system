@@ -7,7 +7,21 @@
   <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
-  <div class="layout">
+  <!-- LOGIN OVERLAY -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-card">
+      <img src="images/lgu-logo.png" alt="LGU" class="login-logo">
+      <h1>Admin Login</h1>
+      <p>Enter the admin password to continue</p>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" autofocus required>
+        <button type="submit" class="btn-primary" style="width:100%;justify-content:center">Sign In</button>
+        <div id="login-error" class="login-error hidden"></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="layout hidden" id="admin-layout">
     <!-- HEADER -->
     <header>
       <div class="header-brand">
@@ -29,6 +43,10 @@
         <button class="btn-reset" onclick="resetCampus()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           Reset Inside
+        </button>
+        <button class="btn-logout" onclick="handleLogout()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Logout
         </button>
       </div>
     </header>
@@ -117,6 +135,7 @@
               <th>Card UID</th>
               <th>Student</th>
               <th>Roll No</th>
+              <th>Gate</th>
               <th>Mode</th>
               <th>Status</th>
               <th>Result</th>

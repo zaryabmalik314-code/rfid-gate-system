@@ -1,9 +1,74 @@
 let RESET_DELAY = 3000;
 let resetTimer = null;
 let todayEntries = 0;
+let isOffline = false;
+let localStudents = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const GATE_MODE = urlParams.get('mode') === 'exit' ? 'exit' : 'entry';
+const GATE_ID = urlParams.get('gate') || 'gate-1';
+
+// --- SERVICE WORKER ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// --- OFFLINE SYNC ---
+async function syncStudents() {
+  try {
+    const res = await fetch('/api/sync');
+    const data = await res.json();
+    localStorage.setItem('lgu_students', JSON.stringify(data.students));
+    localStorage.setItem('lgu_sync_time', data.synced_at);
+    localStudents = data.students;
+    setOnlineStatus(true);
+  } catch (e) {
+    const cached = localStorage.getItem('lgu_students');
+    if (cached) localStudents = JSON.parse(cached);
+    setOnlineStatus(false);
+  }
+}
+
+function setOnlineStatus(online) {
+  isOffline = !online;
+  const dot = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  if (!dot || !label) return;
+  if (online) {
+    dot.className = 'status-dot';
+    label.textContent = 'System Online';
+    label.style.color = 'var(--green)';
+  } else {
+    dot.className = 'status-dot offline';
+    label.textContent = 'OFFLINE MODE';
+    label.style.color = 'var(--orange)';
+  }
+}
+
+function offlineScan(uid) {
+  if (!localStudents) {
+    return { found: false, result: 'unknown', message: 'OFFLINE — NO CACHED DATA' };
+  }
+  const student = localStudents.find(s =>
+    s.card_uid.toUpperCase() === uid || s.roll_number.toUpperCase() === uid
+  );
+  if (!student) {
+    return { found: false, result: 'unknown', message: 'UNREGISTERED CARD' };
+  }
+  const currentYear = new Date().getFullYear();
+  const isExpired = student.expiry_year && currentYear > student.expiry_year;
+  if (isExpired) {
+    return { found: true, result: 'denied', message: `CARD EXPIRED — ENTRY DENIED`, student };
+  }
+  if (student.status !== 'active') {
+    const labels = { graduated: 'GRADUATED', frozen: 'SEMESTER FROZEN', suspended: 'SUSPENDED', dropped: 'DROPPED OUT' };
+    return { found: true, result: 'denied', message: `${labels[student.status] || 'DENIED'} — OFFLINE`, student };
+  }
+  return { found: true, result: 'allowed', message: 'ACTIVE STUDENT — ALLOWED (OFFLINE)', student, mode: 'entry' };
+}
+
+syncStudents();
+setInterval(syncStudents, 60000);
 
 // --- AUDIO ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -83,12 +148,14 @@ async function handleScan() {
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_uid: uid, mode: GATE_MODE })
+      body: JSON.stringify({ card_uid: uid, mode: GATE_MODE, gate_id: GATE_ID })
     });
     const data = await res.json();
+    setOnlineStatus(true);
     showResult(data);
   } catch (err) {
-    showResult({ found: false, result: 'unknown', message: 'SYSTEM ERROR — RETRY' });
+    setOnlineStatus(false);
+    showResult(offlineScan(uid));
   }
 }
 

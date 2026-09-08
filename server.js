@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 const multer = require('multer');
 const XLSX = require('xlsx');
@@ -8,6 +9,7 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 4000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LguAdmin2026';
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -15,6 +17,45 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const upload = multer({ dest: UPLOAD_DIR });
+
+// --- ADMIN AUTH ---
+const adminSessions = new Map();
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function requireAdmin(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const token = auth.slice(7);
+  const session = adminSessions.get(token);
+  if (!session || session.expires < Date.now()) {
+    adminSessions.delete(token);
+    return res.status(401).json({ error: 'Session expired — please log in again' });
+  }
+  next();
+}
+
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Wrong password' });
+  }
+  const token = generateToken();
+  adminSessions.set(token, { expires: Date.now() + 24 * 60 * 60 * 1000 });
+  res.json({ token });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) {
+    adminSessions.delete(auth.slice(7));
+  }
+  res.json({ success: true });
+});
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -41,7 +82,8 @@ const lastScanTime = new Map();
 
 // --- SCAN ENDPOINT ---
 app.post('/api/scan', async (req, res) => {
-  const { card_uid } = req.body;
+  const { card_uid, gate_id } = req.body;
+  const gateLabel = (gate_id || 'gate-1').trim().substring(0, 30);
 
   if (!card_uid || !card_uid.trim()) {
     return res.json({ found: false, result: 'unknown', message: 'No card UID provided' });
@@ -73,9 +115,9 @@ app.post('/api/scan', async (req, res) => {
     result = 'unknown';
     message = 'UNREGISTERED CARD';
     await run(
-      `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
-       VALUES ($1, NULL, NULL, NULL, NULL, $2, $3)`,
-      [uid, result, 'entry']
+      `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
+       VALUES ($1, NULL, NULL, NULL, NULL, $2, $3, $4)`,
+      [uid, result, 'entry', gateLabel]
     );
     return res.json({ found: false, result, message });
   }
@@ -114,16 +156,16 @@ app.post('/api/scan', async (req, res) => {
   lastScanTime.set(uid, now);
 
   await run(
-    `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode]
+    `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode, gateLabel]
   );
 
   res.json({ found: true, result, message, student, mode: scanMode });
 });
 
-// --- STUDENTS CRUD ---
-app.get('/api/students', async (req, res) => {
+// --- STUDENTS CRUD (admin-only) ---
+app.get('/api/students', requireAdmin, async (req, res) => {
   const { search, status, department, page = 1, limit = 50 } = req.query;
   let where = '1=1';
   const params = [];
@@ -156,7 +198,7 @@ app.get('/api/students', async (req, res) => {
   res.json({ students, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
 });
 
-app.post('/api/students', async (req, res) => {
+app.post('/api/students', requireAdmin, async (req, res) => {
   const { card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year } = req.body;
   try {
     await run(
@@ -172,7 +214,7 @@ app.post('/api/students', async (req, res) => {
   }
 });
 
-app.put('/api/students/:id', async (req, res) => {
+app.put('/api/students/:id', requireAdmin, async (req, res) => {
   const { card_uid, name, roll_number, department, semester, section, status, enrollment_year, expiry_year } = req.body;
   try {
     await run(
@@ -185,7 +227,7 @@ app.put('/api/students/:id', async (req, res) => {
   }
 });
 
-app.patch('/api/students/:id/status', async (req, res) => {
+app.patch('/api/students/:id/status', requireAdmin, async (req, res) => {
   const { status } = req.body;
   const valid = ['active', 'graduated', 'frozen', 'suspended', 'dropped'];
   if (!valid.includes(status)) {
@@ -195,13 +237,13 @@ app.patch('/api/students/:id/status', async (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/students/:id', async (req, res) => {
+app.delete('/api/students/:id', requireAdmin, async (req, res) => {
   await run('DELETE FROM students WHERE id = $1', [req.params.id]);
   res.json({ success: true });
 });
 
 // --- BULK IMPORT ---
-app.post('/api/students/import', upload.single('file'), async (req, res) => {
+app.post('/api/students/import', requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
   try {
@@ -261,7 +303,7 @@ app.post('/api/students/import', upload.single('file'), async (req, res) => {
 });
 
 // --- BULK STATUS UPDATE ---
-app.post('/api/students/bulk-status', upload.single('file'), async (req, res) => {
+app.post('/api/students/bulk-status', requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   const defaultStatus = req.body.status || 'frozen';
 
@@ -307,7 +349,7 @@ app.post('/api/students/bulk-status', upload.single('file'), async (req, res) =>
 });
 
 // --- LOGS ---
-app.get('/api/logs', async (req, res) => {
+app.get('/api/logs', requireAdmin, async (req, res) => {
   const { date, result, page = 1, limit = 50 } = req.query;
   let where = '1=1';
   const params = [];
@@ -359,14 +401,22 @@ app.get('/api/stats', async (req, res) => {
   });
 });
 
+// --- SYNC (for offline kiosk) ---
+app.get('/api/sync', async (req, res) => {
+  const students = await query(
+    'SELECT card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus FROM students'
+  );
+  res.json({ students, synced_at: new Date().toISOString() });
+});
+
 // --- DEPARTMENTS ---
-app.get('/api/departments', async (req, res) => {
+app.get('/api/departments', requireAdmin, async (req, res) => {
   const depts = await query('SELECT DISTINCT department FROM students ORDER BY department');
   res.json(depts.map(d => d.department));
 });
 
 // --- MANUAL RESET (admin) ---
-app.post('/api/reset-campus', async (req, res) => {
+app.post('/api/reset-campus', requireAdmin, async (req, res) => {
   const result = await pool.query('UPDATE students SET inside_campus = FALSE WHERE inside_campus = TRUE');
   res.json({ success: true, reset: result.rowCount });
 });
@@ -437,6 +487,7 @@ async function start() {
   `);
 
   try { await pool.query("ALTER TABLE entry_logs ADD COLUMN scan_mode TEXT DEFAULT 'entry'"); } catch(e) {}
+  try { await pool.query("ALTER TABLE entry_logs ADD COLUMN gate_id TEXT DEFAULT 'gate-1'"); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON entry_logs(timestamp)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_result ON entry_logs(result)');

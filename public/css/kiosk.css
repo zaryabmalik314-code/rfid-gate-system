@@ -243,6 +243,11 @@ html, body {
   50% { opacity: 0.5; }
 }
 
+.status-dot.offline {
+  background: var(--orange);
+  box-shadow: 0 0 8px var(--orange);
+}
+
 .system-status {
   color: var(--green);
   font-weight: 600;
