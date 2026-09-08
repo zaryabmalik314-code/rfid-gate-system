@@ -8,12 +8,28 @@
 </head>
 <body>
   <div class="layout">
+    <!-- HEADER -->
     <header>
-      <div class="header-left">
-        <h1>LGU Gate Admin</h1>
-        <a href="/" class="link-kiosk" target="_blank">Entry Gate →</a>
-        <a href="/?mode=exit" class="link-kiosk" target="_blank">Exit Gate →</a>
-        <button class="btn-reset" onclick="resetCampus()">Reset All Inside</button>
+      <div class="header-brand">
+        <img src="images/lgu-logo.png" alt="LGU" class="header-logo">
+        <div>
+          <h1>Smart Gate Admin</h1>
+          <p class="header-sub">Lahore Garrison University — Gate Management System</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="/" class="header-link" target="_blank">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          Entry Gate
+        </a>
+        <a href="/?mode=exit" class="header-link" target="_blank">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          Exit Gate
+        </a>
+        <button class="btn-reset" onclick="resetCampus()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset Inside
+        </button>
       </div>
     </header>
 
@@ -22,15 +38,27 @@
 
     <!-- TABS -->
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('students')">Students</button>
-      <button class="tab" onclick="switchTab('logs')">Entry Logs</button>
-      <button class="tab" onclick="switchTab('import')">Import / Export</button>
+      <button class="tab active" onclick="switchTab('students')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Students
+      </button>
+      <button class="tab" onclick="switchTab('logs')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        Entry Logs
+      </button>
+      <button class="tab" onclick="switchTab('import')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import / Export
+      </button>
     </div>
 
     <!-- STUDENTS TAB -->
     <div id="tab-students" class="tab-content active">
       <div class="toolbar">
-        <input type="text" id="search-input" placeholder="Search name, roll no, card UID..." oninput="debounceSearch()">
+        <div class="search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Search name, roll no, card UID..." oninput="debounceSearch()">
+        </div>
         <select id="filter-status" onchange="loadStudents()">
           <option value="">All Status</option>
           <option value="active">Active</option>
@@ -42,7 +70,10 @@
         <select id="filter-dept" onchange="loadStudents()">
           <option value="">All Departments</option>
         </select>
-        <button class="btn-primary" onclick="showAddModal()">+ Add Student</button>
+        <button class="btn-primary" onclick="showAddModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Student
+        </button>
       </div>
 
       <div class="table-wrap">
@@ -54,8 +85,8 @@
               <th>Roll No</th>
               <th>Card UID</th>
               <th>Department</th>
-              <th>Semester</th>
-              <th>Section</th>
+              <th>Sem</th>
+              <th>Sec</th>
               <th>Valid</th>
               <th>Status</th>
               <th>Actions</th>
@@ -86,6 +117,7 @@
               <th>Card UID</th>
               <th>Student</th>
               <th>Roll No</th>
+              <th>Mode</th>
               <th>Status</th>
               <th>Result</th>
             </tr>
@@ -99,8 +131,11 @@
     <!-- IMPORT TAB -->
     <div id="tab-import" class="tab-content">
       <div class="import-section">
-        <h2>Import Students (Excel / CSV)</h2>
-        <p>Upload an Excel or CSV file with columns: <code>card_uid</code>, <code>name</code>, <code>roll_number</code>, <code>department</code>, <code>semester</code>, <code>section</code>, <code>status</code></p>
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <h2>Import Students (Excel / CSV)</h2>
+        </div>
+        <p>Upload a file with columns: <code>card_uid</code>, <code>name</code>, <code>roll_number</code>, <code>department</code>, <code>semester</code>, <code>section</code>, <code>status</code></p>
         <p>Existing students with the same card_uid will be updated.</p>
         <form id="import-form" onsubmit="handleImport(event)">
           <input type="file" id="import-file" accept=".xlsx,.xls,.csv" required>
@@ -110,8 +145,11 @@
       </div>
 
       <div class="import-section">
-        <h2>Bulk Status Update</h2>
-        <p>Upload an Excel/CSV with <code>roll_number</code> (or <code>card_uid</code>) column. Optionally include a <code>status</code> column per row, or select a status below to apply to all.</p>
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <h2>Bulk Status Update</h2>
+        </div>
+        <p>Upload Excel/CSV with <code>roll_number</code> or <code>card_uid</code>. Include a <code>status</code> column per row, or select one below.</p>
         <form id="bulk-status-form" onsubmit="handleBulkStatus(event)">
           <div class="form-row">
             <select id="bulk-status-select">
@@ -129,8 +167,11 @@
       </div>
 
       <div class="import-section">
-        <h2>Download Template</h2>
-        <p>Download a sample Excel template for importing students.</p>
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <h2>Download Template</h2>
+        </div>
+        <p>Get a sample CSV template for importing students.</p>
         <button class="btn-secondary" onclick="downloadTemplate()">Download Template</button>
       </div>
     </div>
@@ -139,7 +180,10 @@
   <!-- ADD/EDIT MODAL -->
   <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
-      <h2 id="modal-title">Add Student</h2>
+      <div class="modal-header">
+        <h2 id="modal-title">Add Student</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
       <form id="student-form" onsubmit="handleStudentSubmit(event)">
         <input type="hidden" id="edit-id">
         <div class="form-grid">
@@ -196,7 +240,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
+          <button type="submit" class="btn-primary">Save Student</button>
         </div>
       </form>
     </div>

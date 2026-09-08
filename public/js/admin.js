@@ -2,7 +2,6 @@ let currentStudentPage = 1;
 let currentLogPage = 1;
 let searchTimeout = null;
 
-// --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadStudents();
@@ -16,7 +15,6 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
-
   if (tab === 'logs') loadLogs();
 }
 
@@ -25,15 +23,15 @@ async function loadStats() {
   const res = await fetch('/api/stats');
   const s = await res.json();
   document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${s.total}</div><div class="stat-label">Total Students</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--accent)">${s.total}</div><div class="stat-label">Total Students</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.active}</div><div class="stat-label">Active</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.graduated}</div><div class="stat-label">Graduated</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${s.frozen}</div><div class="stat-label">Frozen</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.suspended + s.dropped}</div><div class="stat-label">Suspended/Dropped</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.insideCampus || 0}</div><div class="stat-label">Inside Campus</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${s.entriesToday}</div><div class="stat-label">Entries Today</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.allowedToday}</div><div class="stat-label">Allowed Today</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.deniedToday}</div><div class="stat-label">Denied Today</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--accent)">${s.entriesToday}</div><div class="stat-label">Scans Today</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.allowedToday}</div><div class="stat-label">Allowed</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.deniedToday}</div><div class="stat-label">Denied</div></div>
   `;
 }
 
@@ -60,7 +58,7 @@ async function loadStudents(page = currentStudentPage) {
     tbody.innerHTML = data.students.map(s => {
       const isExpired = s.expiry_year && currentYear > s.expiry_year;
       const validStr = s.enrollment_year && s.expiry_year ? `${s.enrollment_year}-${s.expiry_year}` : '—';
-      const validClass = isExpired ? 'color:var(--red)' : 'color:var(--green)';
+      const validStyle = isExpired ? 'color:var(--red)' : 'color:var(--green)';
       return `
       <tr>
         <td><img src="${s.photo_url}" class="photo-small" alt="${s.name}"></td>
@@ -68,9 +66,9 @@ async function loadStudents(page = currentStudentPage) {
         <td>${s.roll_number}</td>
         <td style="font-size:11px;color:var(--muted)">${s.card_uid}</td>
         <td>${s.department}</td>
-        <td>${s.semester}</td>
-        <td>${s.section}</td>
-        <td style="font-size:12px;font-weight:700;${validClass}">${validStr}${isExpired ? ' ⛔' : ''}</td>
+        <td style="text-align:center">${s.semester}</td>
+        <td style="text-align:center">${s.section}</td>
+        <td style="font-size:12px;font-weight:700;${validStyle}">${validStr}${isExpired ? ' ⛔' : ''}</td>
         <td>
           <select class="status-select" onchange="updateStatus(${s.id}, this.value)">
             ${['active','graduated','frozen','suspended','dropped'].map(st =>
@@ -198,17 +196,19 @@ async function loadLogs(page = currentLogPage) {
 
   const tbody = document.getElementById('logs-tbody');
   if (data.logs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
   } else {
     tbody.innerHTML = data.logs.map(l => {
       const dt = new Date(l.timestamp + 'Z');
       const time = dt.toLocaleString();
+      const mode = l.scan_mode || 'entry';
       return `
         <tr>
-          <td style="white-space:nowrap">${time}</td>
-          <td style="font-size:11px">${l.card_uid}</td>
+          <td style="white-space:nowrap;font-size:12px">${time}</td>
+          <td style="font-size:11px;color:var(--muted)">${l.card_uid}</td>
           <td>${l.student_name || '—'}</td>
           <td>${l.roll_number || '—'}</td>
+          <td><span class="badge badge-${mode}">${mode}</span></td>
           <td>${l.status_at_entry ? `<span class="badge badge-${l.status_at_entry}">${l.status_at_entry}</span>` : '—'}</td>
           <td><span class="badge badge-${l.result}">${l.result}</span></td>
         </tr>
@@ -276,8 +276,8 @@ async function handleBulkStatus(e) {
 }
 
 function downloadTemplate() {
-  const headers = ['card_uid', 'name', 'roll_number', 'department', 'semester', 'section', 'status'];
-  const sample = ['LGU-2024-001', 'Ahmed Raza Khan', '001', 'BS-CMAI', '2', 'A', 'active'];
+  const headers = ['card_uid', 'name', 'roll_number', 'department', 'semester', 'section', 'status', 'enrollment_year', 'expiry_year'];
+  const sample = ['LGU-2024-001', 'Ahmed Raza Khan', '001', 'BS-CMAI', '2', 'A', 'active', '2025', '2029'];
   const csv = headers.join(',') + '\n' + sample.join(',') + '\n';
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
@@ -286,7 +286,7 @@ function downloadTemplate() {
   a.click();
 }
 
-// --- RESET CAMPUS ---
+// --- RESET ---
 async function resetCampus() {
   if (!confirm('Reset all students to "outside campus"? This clears the inside_campus flag for everyone.')) return;
   const res = await fetch('/api/reset-campus', { method: 'POST' });
@@ -300,17 +300,15 @@ function renderPagination(containerId, totalPages, currentPage, onPageClick) {
   const container = document.getElementById(containerId);
   if (totalPages <= 1) { container.innerHTML = ''; return; }
 
-  let html = '';
-  html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="void(0)">← Prev</button>`;
-
+  let html = `<button ${currentPage <= 1 ? 'disabled' : ''}>← Prev</button>`;
   const start = Math.max(1, currentPage - 2);
   const end = Math.min(totalPages, currentPage + 2);
 
   for (let i = start; i <= end; i++) {
-    html += `<button class="${i === currentPage ? 'active' : ''}" onclick="void(0)">${i}</button>`;
+    html += `<button class="${i === currentPage ? 'active' : ''}">${i}</button>`;
   }
 
-  html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="void(0)">Next →</button>`;
+  html += `<button ${currentPage >= totalPages ? 'disabled' : ''}>Next →</button>`;
   container.innerHTML = html;
 
   container.querySelectorAll('button').forEach(btn => {

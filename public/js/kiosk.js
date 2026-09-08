@@ -2,7 +2,6 @@ let RESET_DELAY = 5000;
 let resetTimer = null;
 let todayEntries = 0;
 
-// --- GATE MODE (entry or exit, from URL ?mode=exit) ---
 const urlParams = new URLSearchParams(window.location.search);
 const GATE_MODE = urlParams.get('mode') === 'exit' ? 'exit' : 'entry';
 
@@ -67,19 +66,17 @@ async function updateEntryCount() {
     const data = await res.json();
     todayEntries = data.entriesToday;
     document.getElementById('entry-count').textContent = todayEntries;
-    if (document.getElementById('inside-count')) {
-      document.getElementById('inside-count').textContent = data.insideCampus || 0;
-    }
+    const insideEl = document.getElementById('inside-count');
+    if (insideEl) insideEl.textContent = data.insideCampus || 0;
   } catch (e) {}
 }
 updateEntryCount();
 
-// --- SCAN HANDLER ---
+// --- SCAN ---
 async function handleScan() {
   const input = document.getElementById('card-input');
   const uid = input.value.trim();
   if (!uid) return;
-
   input.value = '';
 
   try {
@@ -105,6 +102,7 @@ function showResult(data) {
   const studentCard = document.getElementById('student-card');
   const unknownCard = document.getElementById('unknown-card');
   const countdownFill = document.getElementById('countdown-fill');
+  const modeEl = document.getElementById('result-mode');
 
   idleView.classList.add('hidden');
   resultView.classList.remove('hidden');
@@ -113,6 +111,7 @@ function showResult(data) {
   banner.className = 'result-banner ' + (isExit ? 'exit' : data.result);
   document.getElementById('result-icon').textContent = isExit ? '👋' : data.result === 'allowed' ? '✅' : data.result === 'denied' ? '🚫' : '⚠️';
   document.getElementById('result-text').textContent = data.message;
+  modeEl.textContent = isExit ? 'EXIT SCAN' : data.result === 'allowed' ? 'ENTRY SCAN' : '';
 
   if (data.found && data.student) {
     studentCard.classList.remove('hidden');
@@ -125,49 +124,40 @@ function showResult(data) {
     document.getElementById('student-sem').textContent = data.student.semester;
     document.getElementById('student-sec').textContent = data.student.section;
 
+    const statusEl = document.getElementById('student-status');
+    statusEl.textContent = data.student.status.toUpperCase();
+    statusEl.className = 'info-value status-' + data.student.status;
+
     const validityEl = document.getElementById('student-validity');
     if (data.student.enrollment_year && data.student.expiry_year) {
       validityEl.textContent = `${data.student.enrollment_year} - ${data.student.expiry_year}`;
       const currentYear = new Date().getFullYear();
-      if (currentYear > data.student.expiry_year) {
-        validityEl.className = 'info-value status-expired';
-      } else {
-        validityEl.className = 'info-value status-active';
-      }
+      validityEl.className = currentYear > data.student.expiry_year ? 'info-value status-expired' : 'info-value status-active';
     } else {
       validityEl.textContent = '—';
       validityEl.className = 'info-value';
     }
-
-    const statusEl = document.getElementById('student-status');
-    statusEl.textContent = data.student.status.toUpperCase();
-    statusEl.className = 'info-value status-' + data.student.status;
   } else {
     studentCard.classList.add('hidden');
     unknownCard.classList.remove('hidden');
   }
 
-  // Flash effect
   app.classList.remove('flash-green', 'flash-red');
   void app.offsetWidth;
   app.classList.add(data.result === 'allowed' ? 'flash-green' : 'flash-red');
 
-  // Sound
   playBeep(data.result);
 
-  // Update counts
   todayEntries++;
   document.getElementById('entry-count').textContent = todayEntries;
   updateEntryCount();
 
-  // Countdown bar
   countdownFill.style.transition = 'none';
   countdownFill.style.width = '100%';
   void countdownFill.offsetWidth;
   countdownFill.style.transition = `width ${RESET_DELAY}ms linear`;
   countdownFill.style.width = '0%';
 
-  // Auto reset
   resetTimer = setTimeout(resetToIdle, RESET_DELAY);
 }
 
@@ -178,28 +168,23 @@ function resetToIdle() {
   document.getElementById('card-input').focus();
 }
 
-// --- EVENT LISTENERS ---
+// --- EVENTS ---
 document.addEventListener('DOMContentLoaded', () => {
-  // Set gate mode label
-  const modeLabel = document.getElementById('gate-mode-label');
-  if (modeLabel) {
-    modeLabel.textContent = GATE_MODE === 'exit' ? 'EXIT GATE' : 'ENTRY GATE';
-    modeLabel.className = 'gate-mode ' + (GATE_MODE === 'exit' ? 'gate-exit' : 'gate-entry');
+  const badge = document.getElementById('gate-badge');
+  if (badge && GATE_MODE === 'exit') {
+    badge.textContent = 'EXIT GATE';
+    badge.className = 'gate-badge gate-exit';
   }
 
   document.getElementById('scan-btn').addEventListener('click', handleScan);
-
   document.getElementById('card-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleScan();
   });
-
   document.getElementById('idle-view').addEventListener('click', (e) => {
     if (e.target.id !== 'scan-btn') document.getElementById('card-input').focus();
   });
-
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') resetToIdle();
   });
-
   document.getElementById('card-input').focus();
 });

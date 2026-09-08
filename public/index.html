@@ -11,19 +11,27 @@
     <!-- IDLE STATE -->
     <div id="idle-view">
       <div class="top-bar">
-        <div class="uni-name">LAHORE GARRISON UNIVERSITY</div>
-        <div class="system-name">Smart Gate Verification System</div>
-        <div class="gate-mode gate-entry">AUTO-DETECT GATE</div>
+        <div class="top-bar-inner">
+          <img src="images/lgu-logo.png" alt="LGU" class="lgu-logo">
+          <div class="top-bar-text">
+            <div class="uni-name">LAHORE GARRISON UNIVERSITY</div>
+            <div class="system-name">Smart Gate Verification System</div>
+          </div>
+          <div class="gate-badge gate-entry" id="gate-badge">AUTO-DETECT</div>
+        </div>
       </div>
+
       <div class="scan-prompt">
-        <div class="scan-icon">
-          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="2" y="2" width="6" height="6" rx="1"/>
-            <rect x="16" y="2" width="6" height="6" rx="1"/>
-            <rect x="2" y="16" width="6" height="6" rx="1"/>
-            <rect x="16" y="16" width="6" height="6" rx="1"/>
-            <rect x="8" y="8" width="8" height="8" rx="1"/>
-          </svg>
+        <div class="scan-ring">
+          <div class="scan-ring-inner">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M2 8V6a2 2 0 0 1 2-2h4"/>
+              <path d="M16 4h4a2 2 0 0 1 2 2v2"/>
+              <path d="M22 16v2a2 2 0 0 1-2 2h-4"/>
+              <path d="M8 20H4a2 2 0 0 1-2-2v-2"/>
+              <rect x="7" y="7" width="10" height="10" rx="1"/>
+            </svg>
+          </div>
         </div>
         <div class="scan-text">TAP YOUR CARD</div>
         <div class="scan-subtext">Place your university ID card on the reader</div>
@@ -32,36 +40,82 @@
           <button id="scan-btn">VERIFY</button>
         </div>
       </div>
+
       <div class="bottom-bar">
+        <div class="bottom-left">
+          <div class="status-dot"></div>
+          <span class="system-status">System Online</span>
+        </div>
         <div class="clock" id="clock"></div>
-        <div class="entry-count">Inside: <span id="inside-count">0</span> | Today: <span id="entry-count">0</span></div>
+        <div class="bottom-right">
+          <div class="counter-box">
+            <span class="counter-label">Inside</span>
+            <span class="counter-value" id="inside-count">0</span>
+          </div>
+          <div class="counter-divider"></div>
+          <div class="counter-box">
+            <span class="counter-label">Today</span>
+            <span class="counter-value" id="entry-count">0</span>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- RESULT STATE -->
     <div id="result-view" class="hidden">
+      <div class="result-header">
+        <img src="images/lgu-logo.png" alt="LGU" class="result-logo">
+        <span class="result-header-text">LGU SMART GATE</span>
+      </div>
       <div class="result-banner" id="result-banner">
         <div class="result-icon" id="result-icon"></div>
         <div class="result-text" id="result-text"></div>
+        <div class="result-mode" id="result-mode"></div>
       </div>
       <div class="student-card" id="student-card">
-        <img id="student-photo" src="" alt="Student Photo" class="student-photo">
+        <div class="student-photo-wrap">
+          <img id="student-photo" src="" alt="Student Photo" class="student-photo">
+        </div>
         <div class="student-info">
           <div class="student-name" id="student-name"></div>
           <div class="info-grid">
-            <div class="info-item"><span class="info-label">Roll No</span><span class="info-value" id="student-roll"></span></div>
-            <div class="info-item"><span class="info-label">Department</span><span class="info-value" id="student-dept"></span></div>
-            <div class="info-item"><span class="info-label">Semester</span><span class="info-value" id="student-sem"></span></div>
-            <div class="info-item"><span class="info-label">Section</span><span class="info-value" id="student-sec"></span></div>
-            <div class="info-item"><span class="info-label">Status</span><span class="info-value" id="student-status"></span></div>
-            <div class="info-item"><span class="info-label">Valid Period</span><span class="info-value" id="student-validity"></span></div>
+            <div class="info-item">
+              <span class="info-label">Roll No</span>
+              <span class="info-value" id="student-roll"></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Department</span>
+              <span class="info-value" id="student-dept"></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Semester</span>
+              <span class="info-value" id="student-sem"></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Section</span>
+              <span class="info-value" id="student-sec"></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Status</span>
+              <span class="info-value" id="student-status"></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Valid Period</span>
+              <span class="info-value" id="student-validity"></span>
+            </div>
           </div>
         </div>
       </div>
       <div class="unknown-card hidden" id="unknown-card">
-        <div class="unknown-icon">⚠️</div>
+        <div class="unknown-icon-wrap">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
         <div class="unknown-text">UNREGISTERED CARD</div>
-        <div class="unknown-subtext">This card is not in the system</div>
+        <div class="unknown-subtext">This card is not recognized by the system</div>
       </div>
       <div class="countdown-bar">
         <div class="countdown-fill" id="countdown-fill"></div>
