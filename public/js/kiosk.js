@@ -158,6 +158,11 @@ function showResult(data) {
   countdownFill.style.transition = `width ${RESET_DELAY}ms linear`;
   countdownFill.style.width = '0%';
 
+  // Focus ghost input so RFID reader keystrokes are captured during result screen
+  const ghost = document.getElementById('ghost-input');
+  ghost.value = '';
+  ghost.focus();
+
   resetTimer = setTimeout(resetToIdle, RESET_DELAY);
 }
 
@@ -183,6 +188,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('idle-view').addEventListener('click', (e) => {
     if (e.target.id !== 'scan-btn') document.getElementById('card-input').focus();
   });
+  // Ghost input — captures RFID taps during result screen
+  document.getElementById('ghost-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const ghost = document.getElementById('ghost-input');
+      const uid = ghost.value.trim();
+      if (!uid) return;
+      ghost.value = '';
+      document.getElementById('card-input').value = uid;
+      handleScan();
+    }
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') resetToIdle();
   });

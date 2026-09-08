@@ -452,6 +452,15 @@ html, body {
   background: var(--bg);
 }
 
+/* Ghost input — captures RFID keystrokes during result screen */
+.ghost-input {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 .unknown-icon-wrap { color: var(--orange); opacity: 0.8; }
 .unknown-text { font-size: 32px; font-weight: 800; color: var(--orange); letter-spacing: 3px; }
 .unknown-subtext { font-size: 16px; color: var(--muted); }
