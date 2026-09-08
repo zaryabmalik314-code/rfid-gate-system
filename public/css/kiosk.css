@@ -45,13 +45,13 @@ html, body {
 .top-bar-inner {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 28px;
+  gap: 20px;
+  padding: 16px 36px;
 }
 
 .lgu-logo {
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--border);
@@ -62,26 +62,26 @@ html, body {
 .top-bar-text { flex: 1; }
 
 .uni-name {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 3px;
   color: var(--text);
 }
 
 .system-name {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   letter-spacing: 1.5px;
-  margin-top: 1px;
+  margin-top: 2px;
   text-transform: uppercase;
 }
 
 .gate-badge {
-  padding: 5px 16px;
+  padding: 8px 22px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
   flex-shrink: 0;
 }
@@ -105,13 +105,13 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 32px;
+  gap: 36px;
   background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.03) 0%, transparent 70%);
 }
 
 .scan-ring {
-  width: 150px;
-  height: 150px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   border: 2px solid rgba(34, 197, 94, 0.15);
   display: flex;
@@ -124,7 +124,7 @@ html, body {
 .scan-ring::before {
   content: '';
   position: absolute;
-  inset: -10px;
+  inset: -12px;
   border-radius: 50%;
   border: 1px solid rgba(34, 197, 94, 0.08);
   animation: ringPulse 3s ease-in-out infinite 0.5s;
@@ -134,6 +134,8 @@ html, body {
   color: var(--green);
   animation: iconFloat 3s ease-in-out infinite;
 }
+
+.scan-ring-inner svg { width: 100px; height: 100px; }
 
 @keyframes ringPulse {
   0%, 100% { transform: scale(1); opacity: 0.5; }
@@ -146,35 +148,35 @@ html, body {
 }
 
 .scan-text {
-  font-size: 36px;
+  font-size: 52px;
   font-weight: 700;
-  letter-spacing: 10px;
+  letter-spacing: 12px;
   color: var(--text);
 }
 
 .scan-subtext {
-  font-size: 14px;
+  font-size: 20px;
   color: var(--muted);
   letter-spacing: 0.5px;
 }
 
 .manual-input {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .manual-input input {
-  width: 300px;
-  padding: 12px 20px;
-  font-size: 16px;
+  width: 400px;
+  padding: 18px 28px;
+  font-size: 22px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   outline: none;
   text-align: center;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   font-weight: 600;
   transition: border-color 0.2s;
 }
@@ -188,19 +190,19 @@ html, body {
   color: var(--muted);
   font-weight: 400;
   letter-spacing: 1px;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .manual-input button {
-  padding: 12px 24px;
-  font-size: 14px;
+  padding: 18px 36px;
+  font-size: 20px;
   font-weight: 700;
   background: var(--green);
   color: #0a0e1a;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   transition: opacity 0.15s;
 }
 
@@ -212,7 +214,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 28px;
+  padding: 14px 36px;
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
@@ -220,15 +222,15 @@ html, body {
 .bottom-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 6px var(--green);
+  box-shadow: 0 0 8px var(--green);
   animation: dotPulse 2s ease-in-out infinite;
 }
 
@@ -239,13 +241,13 @@ html, body {
 
 .status-dot.offline {
   background: var(--orange);
-  box-shadow: 0 0 6px var(--orange);
+  box-shadow: 0 0 8px var(--orange);
 }
 
 .system-status {
   color: var(--green);
   font-weight: 600;
-  font-size: 11px;
+  font-size: 15px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
@@ -253,7 +255,7 @@ html, body {
 .clock {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 24px;
   color: var(--muted);
   letter-spacing: 1px;
 }
@@ -261,32 +263,32 @@ html, body {
 .bottom-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .counter-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
 }
 
 .counter-label {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
 }
 
 .counter-value {
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--green);
 }
 
 .counter-divider {
   width: 1px;
-  height: 24px;
+  height: 32px;
   background: var(--border);
 }
 
@@ -301,15 +303,15 @@ html, body {
 .result-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 28px;
+  gap: 14px;
+  padding: 14px 36px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
 .result-logo {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   background: #fff;
@@ -317,7 +319,7 @@ html, body {
 }
 
 .result-header-text {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 3px;
   color: var(--muted);
@@ -329,49 +331,49 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 18px 28px;
+  gap: 18px;
+  padding: 28px 36px;
 }
 
-.result-banner .result-icon { font-size: 36px; line-height: 1; }
+.result-banner .result-icon { font-size: 48px; line-height: 1; }
 
 .result-banner .result-text {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
 }
 
 .result-mode {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   opacity: 0.6;
-  margin-left: 8px;
+  margin-left: 10px;
 }
 
 .result-banner.allowed {
   background: linear-gradient(90deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.03) 100%);
   color: var(--green);
-  border-left: 4px solid var(--green);
+  border-left: 5px solid var(--green);
 }
 
 .result-banner.denied {
   background: linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.03) 100%);
   color: var(--red);
-  border-left: 4px solid var(--red);
+  border-left: 5px solid var(--red);
 }
 
 .result-banner.exit {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.03) 100%);
   color: var(--blue);
-  border-left: 4px solid var(--blue);
+  border-left: 5px solid var(--blue);
 }
 
 .result-banner.unknown {
   background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%);
   color: var(--orange);
-  border-left: 4px solid var(--orange);
+  border-left: 5px solid var(--orange);
 }
 
 /* ===== STUDENT CARD ===== */
@@ -380,34 +382,34 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 44px;
-  padding: 24px 60px;
+  gap: 56px;
+  padding: 32px 72px;
 }
 
 .student-left {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   flex-shrink: 0;
 }
 
 .student-photo {
-  width: 180px;
-  height: 180px;
+  width: 240px;
+  height: 240px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--border);
+  border: 4px solid var(--border);
   background: var(--surface);
-  box-shadow: 0 0 40px rgba(0,0,0,0.3);
+  box-shadow: 0 0 50px rgba(0,0,0,0.4);
 }
 
 .student-status-badge {
-  padding: 5px 20px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 8px 28px;
+  border-radius: 6px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   text-transform: uppercase;
   text-align: center;
 }
@@ -446,50 +448,50 @@ html, body {
 .student-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
 }
 
 .student-name {
-  font-size: 34px;
+  font-size: 46px;
   font-weight: 700;
   line-height: 1.1;
   color: var(--text);
 }
 
 .student-roll-line {
-  font-size: 15px;
+  font-size: 20px;
   color: var(--muted);
   font-weight: 500;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .info-item {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 14px 18px;
 }
 
 .info-label {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 4px;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
   font-weight: 600;
 }
 
 .info-value {
   display: block;
-  font-size: 17px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text);
 }
@@ -506,7 +508,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .ghost-input {
@@ -518,11 +520,12 @@ html, body {
 }
 
 .unknown-icon-wrap { color: var(--orange); opacity: 0.7; }
-.unknown-text { font-size: 28px; font-weight: 700; color: var(--orange); letter-spacing: 3px; }
-.unknown-subtext { font-size: 14px; color: var(--muted); }
+.unknown-icon-wrap svg { width: 100px; height: 100px; }
+.unknown-text { font-size: 40px; font-weight: 700; color: var(--orange); letter-spacing: 4px; }
+.unknown-subtext { font-size: 20px; color: var(--muted); }
 
 /* ===== COUNTDOWN BAR ===== */
-.countdown-bar { height: 3px; background: var(--surface); }
+.countdown-bar { height: 4px; background: var(--surface); }
 .countdown-fill {
   height: 100%;
   width: 100%;
@@ -544,29 +547,32 @@ html, body {
   100% { background: var(--bg); }
 }
 
-/* ===== RESPONSIVE ===== */
+/* ===== RESPONSIVE (tablets/small screens) ===== */
 @media (max-width: 768px) {
   .top-bar-inner { padding: 10px 16px; gap: 10px; }
-  .lgu-logo { width: 36px; height: 36px; }
-  .uni-name { font-size: 14px; letter-spacing: 1.5px; }
-  .system-name { font-size: 9px; }
-  .gate-badge { font-size: 9px; padding: 4px 12px; }
-  .scan-ring { width: 110px; height: 110px; }
-  .scan-ring-inner svg { width: 50px; height: 50px; }
-  .scan-text { font-size: 24px; letter-spacing: 5px; }
-  .scan-subtext { font-size: 12px; }
+  .lgu-logo { width: 40px; height: 40px; }
+  .uni-name { font-size: 16px; letter-spacing: 1.5px; }
+  .system-name { font-size: 10px; }
+  .gate-badge { font-size: 10px; padding: 5px 14px; }
+  .scan-ring { width: 130px; height: 130px; }
+  .scan-ring-inner svg { width: 60px; height: 60px; }
+  .scan-text { font-size: 30px; letter-spacing: 6px; }
+  .scan-subtext { font-size: 14px; }
   .manual-input { flex-direction: column; align-items: center; }
-  .manual-input input { width: 260px; font-size: 14px; padding: 10px; }
-  .manual-input button { padding: 10px 20px; font-size: 13px; }
-  .student-card { flex-direction: column; gap: 16px; padding: 16px; }
-  .student-photo { width: 120px; height: 120px; }
-  .student-name { font-size: 22px; text-align: center; }
-  .student-roll-line { text-align: center; font-size: 13px; }
+  .manual-input input { width: 300px; font-size: 16px; padding: 14px; }
+  .manual-input button { padding: 14px 28px; font-size: 16px; }
+  .student-card { flex-direction: column; gap: 20px; padding: 20px; }
+  .student-photo { width: 150px; height: 150px; }
+  .student-name { font-size: 28px; text-align: center; }
+  .student-roll-line { text-align: center; font-size: 15px; }
   .student-info { align-items: center; }
-  .info-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
-  .info-value { font-size: 14px; }
-  .result-banner .result-text { font-size: 16px; letter-spacing: 1px; }
-  .result-banner .result-icon { font-size: 28px; }
-  .bottom-bar { padding: 8px 16px; }
-  .clock { font-size: 13px; }
+  .info-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .info-value { font-size: 18px; }
+  .result-banner .result-text { font-size: 22px; letter-spacing: 2px; }
+  .result-banner .result-icon { font-size: 36px; }
+  .bottom-bar { padding: 10px 16px; }
+  .clock { font-size: 16px; }
+  .counter-value { font-size: 20px; }
+  .unknown-text { font-size: 28px; }
+  .unknown-icon-wrap svg { width: 64px; height: 64px; }
 }
