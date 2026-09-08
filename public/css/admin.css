@@ -351,6 +351,7 @@ tr:hover td { background: rgba(59, 130, 246, 0.03); }
 .badge-unknown { background: rgba(245, 158, 11, 0.1); color: var(--orange); border: 1px solid rgba(245, 158, 11, 0.2); }
 
 .badge-entry { background: rgba(34, 197, 94, 0.1); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.2); }
+.badge-gate { background: rgba(59, 130, 246, 0.1); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.2); text-transform: capitalize; }
 .badge-exit { background: rgba(59, 130, 246, 0.1); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.2); }
 
 .status-select {
