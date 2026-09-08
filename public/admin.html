@@ -195,6 +195,34 @@
     </div>
   </div>
 
+  <!-- SUSPEND MODAL -->
+  <div class="modal-overlay hidden" id="suspend-overlay" onclick="closeSuspendModal()">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:420px">
+      <div class="modal-header">
+        <h2 id="suspend-title">Suspend Student</h2>
+        <button class="modal-close" onclick="closeSuspendModal()">&times;</button>
+      </div>
+      <div style="padding:20px 24px">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px" id="suspend-desc">Set how long this student should be suspended.</p>
+        <div class="suspend-options">
+          <button class="suspend-opt" onclick="selectSuspendDays(7)">7 Days</button>
+          <button class="suspend-opt" onclick="selectSuspendDays(14)">14 Days</button>
+          <button class="suspend-opt" onclick="selectSuspendDays(30)">30 Days</button>
+          <button class="suspend-opt" onclick="selectSuspendDays(90)">90 Days</button>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px">
+          <label style="font-size:12px;color:var(--muted);white-space:nowrap">Custom days:</label>
+          <input type="number" id="suspend-days-input" min="1" max="365" placeholder="e.g. 45" style="flex:1;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none">
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeSuspendModal()">Cancel</button>
+          <button class="btn-secondary" onclick="confirmSuspend(0)" style="color:var(--orange);border-color:rgba(245,158,11,0.3)">Indefinite</button>
+          <button class="btn-primary" onclick="confirmSuspendCustom()" style="background:var(--red)">Suspend</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ADD/EDIT MODAL -->
   <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">

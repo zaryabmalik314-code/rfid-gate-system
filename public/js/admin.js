@@ -180,17 +180,55 @@ async function loadDepartments() {
   });
 }
 
+let pendingSuspendId = null;
+
+function showSuspendModal(id, name) {
+  pendingSuspendId = id;
+  document.getElementById('suspend-title').textContent = `Suspend ${name}`;
+  document.getElementById('suspend-desc').textContent = `Choose how long to suspend ${name} from campus.`;
+  document.getElementById('suspend-days-input').value = '';
+  document.getElementById('suspend-overlay').classList.remove('hidden');
+}
+
+function closeSuspendModal() {
+  document.getElementById('suspend-overlay').classList.add('hidden');
+  pendingSuspendId = null;
+  loadStudents();
+}
+
+function selectSuspendDays(days) {
+  document.getElementById('suspend-days-input').value = days;
+  confirmSuspend(days);
+}
+
+async function confirmSuspend(days) {
+  if (!pendingSuspendId) return;
+  await authFetch(`/api/students/${pendingSuspendId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'suspended', suspended_days: days || null })
+  });
+  closeSuspendModal();
+  loadStudents();
+  loadStats();
+}
+
+function confirmSuspendCustom() {
+  const days = parseInt(document.getElementById('suspend-days-input').value);
+  if (!days || days < 1) { document.getElementById('suspend-days-input').focus(); return; }
+  confirmSuspend(days);
+}
+
 async function updateStatus(id, status) {
-  let suspended_days = null;
   if (status === 'suspended') {
-    const days = prompt('Suspend for how many days? (leave empty for indefinite)');
-    if (days === null) { loadStudents(); return; }
-    if (days.trim()) suspended_days = parseInt(days.trim());
+    const nameEl = document.querySelector(`[onchange="updateStatus(${id}, this.value)"]`)?.closest('tr')?.querySelector('strong');
+    showSuspendModal(id, nameEl ? nameEl.textContent : 'Student');
+    return;
   }
   await authFetch(`/api/students/${id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status, suspended_days })
+    body: JSON.stringify({ status })
   });
   loadStudents();
   loadStats();

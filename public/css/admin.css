@@ -639,6 +639,31 @@ tr:hover td { background: rgba(59, 130, 246, 0.03); }
 
 .btn-logout:hover { background: rgba(239, 68, 68, 0.15); }
 
+/* ===== SUSPEND MODAL ===== */
+.suspend-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.suspend-opt {
+  padding: 12px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.suspend-opt:hover {
+  border-color: var(--red);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--red);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .layout { padding: 12px; }
