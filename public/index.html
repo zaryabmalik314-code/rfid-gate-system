@@ -73,18 +73,20 @@
         <div class="result-mode" id="result-mode"></div>
       </div>
       <div class="student-card" id="student-card">
-        <div class="student-photo-wrap">
+        <div class="student-left">
           <img id="student-photo" src="" alt="Student Photo" class="student-photo">
+          <div class="student-status-badge" id="student-status-badge">ENROLLED</div>
         </div>
         <div class="student-info">
           <div class="student-name" id="student-name"></div>
+          <div class="student-roll-line" id="student-roll-line">069 &bull; BS-CMAI</div>
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Roll No</span>
               <span class="info-value" id="student-roll"></span>
             </div>
             <div class="info-item">
-              <span class="info-label">Department</span>
+              <span class="info-label">Degree</span>
               <span class="info-value" id="student-dept"></span>
             </div>
             <div class="info-item">
@@ -96,12 +98,12 @@
               <span class="info-value" id="student-sec"></span>
             </div>
             <div class="info-item">
-              <span class="info-label">Status</span>
-              <span class="info-value" id="student-status"></span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Valid Period</span>
+              <span class="info-label">Valid</span>
               <span class="info-value" id="student-validity"></span>
+            </div>
+            <div class="info-item" id="suspend-info-item" style="display:none">
+              <span class="info-label">Suspended Until</span>
+              <span class="info-value" id="student-suspend-until" style="color:var(--red)"></span>
             </div>
           </div>
         </div>

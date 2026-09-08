@@ -198,10 +198,26 @@ function showResult(data) {
     document.getElementById('student-sem').textContent = data.student.semester;
     document.getElementById('student-sec').textContent = data.student.section;
 
-    const statusEl = document.getElementById('student-status');
+    // Roll line under name
+    document.getElementById('student-roll-line').textContent = `${data.student.roll_number} • ${data.student.department} • Sem ${data.student.semester}`;
+
+    // Status badge under photo
+    const statusBadge = document.getElementById('student-status-badge');
     const displayStatus = data.student.status === 'active' ? 'ENROLLED' : data.student.status.toUpperCase();
-    statusEl.textContent = displayStatus;
-    statusEl.className = 'info-value status-' + data.student.status;
+    statusBadge.textContent = displayStatus;
+    statusBadge.className = 'student-status-badge badge-' + (data.student.status === 'active' ? 'enrolled' : data.student.status);
+
+    // Suspension info
+    const suspItem = document.getElementById('suspend-info-item');
+    const suspEl = document.getElementById('student-suspend-until');
+    if (data.student.status === 'suspended' && data.student.suspended_until) {
+      const suspEnd = new Date(data.student.suspended_until);
+      const daysLeft = Math.ceil((suspEnd - new Date()) / (1000 * 60 * 60 * 24));
+      suspEl.textContent = daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left` : 'Expired';
+      suspItem.style.display = '';
+    } else {
+      suspItem.style.display = 'none';
+    }
 
     const validityEl = document.getElementById('student-validity');
     if (data.student.enrollment_year && data.student.expiry_year) {
