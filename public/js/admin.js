@@ -320,8 +320,8 @@ async function loadLogs(page = currentLogPage) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
   } else {
     tbody.innerHTML = data.logs.map(l => {
-      const dt = new Date(l.timestamp + 'Z');
-      const time = dt.toLocaleString();
+      const dt = new Date(l.timestamp);
+      const time = isNaN(dt) ? l.timestamp : dt.toLocaleString();
       const mode = l.scan_mode || 'entry';
       return `
         <tr>
