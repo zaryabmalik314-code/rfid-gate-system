@@ -1,4 +1,4 @@
-let RESET_DELAY = 5000;
+let RESET_DELAY = 3000;
 let resetTimer = null;
 let todayEntries = 0;
 
