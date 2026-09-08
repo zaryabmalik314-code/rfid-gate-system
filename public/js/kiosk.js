@@ -148,7 +148,7 @@ async function handleScan() {
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_uid: uid, mode: GATE_MODE, gate_id: GATE_ID })
+      body: JSON.stringify({ card_uid: uid, mode: GATE_MODE })
     });
     const data = await res.json();
     setOnlineStatus(true);

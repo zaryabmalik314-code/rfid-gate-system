@@ -82,8 +82,7 @@ const lastScanTime = new Map();
 
 // --- SCAN ENDPOINT ---
 app.post('/api/scan', async (req, res) => {
-  const { card_uid, gate_id } = req.body;
-  const gateLabel = (gate_id || 'main').trim().substring(0, 30);
+  const { card_uid } = req.body;
 
   if (!card_uid || !card_uid.trim()) {
     return res.json({ found: false, result: 'unknown', message: 'No card UID provided' });
@@ -115,9 +114,9 @@ app.post('/api/scan', async (req, res) => {
     result = 'unknown';
     message = 'UNREGISTERED CARD';
     await run(
-      `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
-       VALUES ($1, NULL, NULL, NULL, NULL, $2, $3, $4)`,
-      [uid, result, 'entry', gateLabel]
+      `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
+       VALUES ($1, NULL, NULL, NULL, NULL, $2, $3)`,
+      [uid, result, 'entry']
     );
     return res.json({ found: false, result, message });
   }
@@ -156,9 +155,9 @@ app.post('/api/scan', async (req, res) => {
   lastScanTime.set(uid, now);
 
   await run(
-    `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode, gateLabel]
+    `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode]
   );
 
   res.json({ found: true, result, message, student, mode: scanMode });
@@ -487,7 +486,6 @@ async function start() {
   `);
 
   try { await pool.query("ALTER TABLE entry_logs ADD COLUMN scan_mode TEXT DEFAULT 'entry'"); } catch(e) {}
-  try { await pool.query("ALTER TABLE entry_logs ADD COLUMN gate_id TEXT DEFAULT 'main'"); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON entry_logs(timestamp)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_result ON entry_logs(result)');

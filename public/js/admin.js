@@ -266,7 +266,7 @@ async function loadLogs(page = currentLogPage) {
 
   const tbody = document.getElementById('logs-tbody');
   if (data.logs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">No logs found</td></tr>';
   } else {
     tbody.innerHTML = data.logs.map(l => {
       const dt = new Date(l.timestamp + 'Z');
@@ -278,7 +278,6 @@ async function loadLogs(page = currentLogPage) {
           <td style="font-size:11px;color:var(--muted)">${l.card_uid}</td>
           <td>${l.student_name || '—'}</td>
           <td>${l.roll_number || '—'}</td>
-          <td style="font-size:11px;color:var(--muted)">${l.gate_id || 'main'}</td>
           <td><span class="badge badge-${mode}">${mode}</span></td>
           <td>${l.status_at_entry ? `<span class="badge badge-${l.status_at_entry}">${l.status_at_entry}</span>` : '—'}</td>
           <td><span class="badge badge-${l.result}">${l.result}</span></td>
