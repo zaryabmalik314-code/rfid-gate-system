@@ -83,7 +83,7 @@ const lastScanTime = new Map();
 // --- SCAN ENDPOINT ---
 app.post('/api/scan', async (req, res) => {
   const { card_uid, gate_id } = req.body;
-  const gateLabel = (gate_id || 'gate-1').trim().substring(0, 30);
+  const gateLabel = (gate_id || 'main').trim().substring(0, 30);
 
   if (!card_uid || !card_uid.trim()) {
     return res.json({ found: false, result: 'unknown', message: 'No card UID provided' });
@@ -487,7 +487,7 @@ async function start() {
   `);
 
   try { await pool.query("ALTER TABLE entry_logs ADD COLUMN scan_mode TEXT DEFAULT 'entry'"); } catch(e) {}
-  try { await pool.query("ALTER TABLE entry_logs ADD COLUMN gate_id TEXT DEFAULT 'gate-1'"); } catch(e) {}
+  try { await pool.query("ALTER TABLE entry_logs ADD COLUMN gate_id TEXT DEFAULT 'main'"); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON entry_logs(timestamp)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_result ON entry_logs(result)');

@@ -6,7 +6,7 @@ let localStudents = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const GATE_MODE = urlParams.get('mode') === 'exit' ? 'exit' : 'entry';
-const GATE_ID = urlParams.get('gate') || 'gate-1';
+const GATE_ID = urlParams.get('gate') || 'main';
 
 // --- SERVICE WORKER ---
 if ('serviceWorker' in navigator) {
@@ -243,10 +243,9 @@ function resetToIdle() {
 // --- EVENTS ---
 document.addEventListener('DOMContentLoaded', () => {
   const badge = document.getElementById('gate-badge');
-  if (badge && GATE_MODE === 'exit') {
-    badge.textContent = 'EXIT GATE';
-    badge.className = 'gate-badge gate-exit';
-  }
+  const gateNames = { main: 'MAIN GATE', parking: 'PARKING GATE' };
+  badge.textContent = gateNames[GATE_ID] || GATE_ID.toUpperCase();
+  if (GATE_ID === 'parking') badge.className = 'gate-badge gate-exit';
 
   document.getElementById('scan-btn').addEventListener('click', handleScan);
   document.getElementById('card-input').addEventListener('keydown', (e) => {

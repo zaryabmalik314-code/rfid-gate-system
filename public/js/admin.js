@@ -278,7 +278,7 @@ async function loadLogs(page = currentLogPage) {
           <td style="font-size:11px;color:var(--muted)">${l.card_uid}</td>
           <td>${l.student_name || '—'}</td>
           <td>${l.roll_number || '—'}</td>
-          <td style="font-size:11px;color:var(--muted)">${l.gate_id || 'gate-1'}</td>
+          <td style="font-size:11px;color:var(--muted)">${l.gate_id || 'main'}</td>
           <td><span class="badge badge-${mode}">${mode}</span></td>
           <td>${l.status_at_entry ? `<span class="badge badge-${l.status_at_entry}">${l.status_at_entry}</span>` : '—'}</td>
           <td><span class="badge badge-${l.result}">${l.result}</span></td>
