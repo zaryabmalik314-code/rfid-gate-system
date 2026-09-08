@@ -94,7 +94,7 @@ async function loadStats() {
   const s = await res.json();
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card"><div class="stat-value" style="color:var(--accent)">${s.total}</div><div class="stat-label">Total Students</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.active}</div><div class="stat-label">Active</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.enrolled}</div><div class="stat-label">Enrolled</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.graduated}</div><div class="stat-label">Graduated</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${s.frozen}</div><div class="stat-label">Frozen</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--red)">${s.suspended + s.dropped}</div><div class="stat-label">Suspended/Dropped</div></div>
@@ -129,6 +129,12 @@ async function loadStudents(page = currentStudentPage) {
       const isExpired = s.expiry_year && currentYear > s.expiry_year;
       const validStr = s.enrollment_year && s.expiry_year ? `${s.enrollment_year}-${s.expiry_year}` : '—';
       const validStyle = isExpired ? 'color:var(--red)' : 'color:var(--green)';
+      let suspInfo = '';
+      if (s.status === 'suspended' && s.suspended_until) {
+        const until = new Date(s.suspended_until);
+        const daysLeft = Math.ceil((until - new Date()) / (1000 * 60 * 60 * 24));
+        suspInfo = daysLeft > 0 ? ` <span style="font-size:10px;color:var(--orange)">(${daysLeft}d left)</span>` : ' <span style="font-size:10px;color:var(--green)">(expired)</span>';
+      }
       return `
       <tr>
         <td><img src="${s.photo_url}" class="photo-small" alt="${s.name}"></td>
@@ -141,10 +147,10 @@ async function loadStudents(page = currentStudentPage) {
         <td style="font-size:12px;font-weight:700;${validStyle}">${validStr}${isExpired ? ' ⛔' : ''}</td>
         <td>
           <select class="status-select" onchange="updateStatus(${s.id}, this.value)">
-            ${['active','graduated','frozen','suspended','dropped'].map(st =>
-              `<option value="${st}" ${s.status === st ? 'selected' : ''}>${st.charAt(0).toUpperCase() + st.slice(1)}</option>`
+            ${[['active','Enrolled'],['graduated','Graduated'],['frozen','Frozen'],['suspended','Suspended'],['dropped','Dropped']].map(([val,lbl]) =>
+              `<option value="${val}" ${s.status === val ? 'selected' : ''}>${lbl}</option>`
             ).join('')}
-          </select>
+          </select>${suspInfo}
         </td>
         <td class="actions-cell">
           <button class="btn-small btn-edit" onclick='editStudent(${JSON.stringify(s)})'>Edit</button>
@@ -175,11 +181,18 @@ async function loadDepartments() {
 }
 
 async function updateStatus(id, status) {
+  let suspended_days = null;
+  if (status === 'suspended') {
+    const days = prompt('Suspend for how many days? (leave empty for indefinite)');
+    if (days === null) { loadStudents(); return; }
+    if (days.trim()) suspended_days = parseInt(days.trim());
+  }
   await authFetch(`/api/students/${id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, suspended_days })
   });
+  loadStudents();
   loadStats();
 }
 

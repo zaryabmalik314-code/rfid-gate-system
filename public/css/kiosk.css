@@ -445,7 +445,7 @@ html, body {
   font-weight: 700;
 }
 
-.status-active { color: var(--green); }
+.status-active, .status-enrolled { color: var(--green); }
 .status-graduated, .status-suspended, .status-dropped { color: var(--red); }
 .status-frozen { color: var(--orange); }
 .status-expired { color: var(--red); }

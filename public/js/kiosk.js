@@ -60,11 +60,18 @@ function offlineScan(uid) {
   if (isExpired) {
     return { found: true, result: 'denied', message: `CARD EXPIRED — ENTRY DENIED`, student };
   }
+  if (student.status === 'suspended' && student.suspended_until) {
+    const suspEnd = new Date(student.suspended_until);
+    if (suspEnd > new Date()) {
+      const daysLeft = Math.ceil((suspEnd - new Date()) / (1000 * 60 * 60 * 24));
+      return { found: true, result: 'denied', message: `SUSPENDED — ${daysLeft} DAY${daysLeft !== 1 ? 'S' : ''} LEFT`, student };
+    }
+  }
   if (student.status !== 'active') {
     const labels = { graduated: 'GRADUATED', frozen: 'SEMESTER FROZEN', suspended: 'SUSPENDED', dropped: 'DROPPED OUT' };
     return { found: true, result: 'denied', message: `${labels[student.status] || 'DENIED'} — OFFLINE`, student };
   }
-  return { found: true, result: 'allowed', message: 'ACTIVE STUDENT — ALLOWED (OFFLINE)', student, mode: 'entry' };
+  return { found: true, result: 'allowed', message: 'ENROLLED STUDENT — ALLOWED (OFFLINE)', student, mode: 'entry' };
 }
 
 syncStudents();
@@ -192,7 +199,8 @@ function showResult(data) {
     document.getElementById('student-sec').textContent = data.student.section;
 
     const statusEl = document.getElementById('student-status');
-    statusEl.textContent = data.student.status.toUpperCase();
+    const displayStatus = data.student.status === 'active' ? 'ENROLLED' : data.student.status.toUpperCase();
+    statusEl.textContent = displayStatus;
     statusEl.className = 'info-value status-' + data.student.status;
 
     const validityEl = document.getElementById('student-validity');

@@ -76,9 +76,9 @@ async function run(sql, params = []) {
   await pool.query(sql, params);
 }
 
-// --- COOLDOWN (3 min per card to prevent double-tap bypass) ---
+// --- COOLDOWN (only after exit→re-entry, not on consecutive entries) ---
 const COOLDOWN_MS = parseInt(process.env.SCAN_COOLDOWN_MS || '180000');
-const lastScanTime = new Map();
+const lastExitTime = new Map();
 
 // --- SCAN ENDPOINT ---
 app.post('/api/scan', async (req, res) => {
@@ -89,21 +89,10 @@ app.post('/api/scan', async (req, res) => {
   }
 
   const uid = card_uid.trim().toUpperCase();
-
-  // Cooldown check (before even hitting DB)
   const now = Date.now();
-  const lastScan = lastScanTime.get(uid);
-  if (lastScan && (now - lastScan) < COOLDOWN_MS) {
-    const remainSec = Math.ceil((COOLDOWN_MS - (now - lastScan)) / 1000);
-    return res.json({
-      found: false, result: 'denied',
-      message: `PLEASE WAIT ${remainSec}s — COOLDOWN ACTIVE`,
-      cooldown: true
-    });
-  }
 
   const student = await queryOne(
-    `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus
+    `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
     [uid]
   );
@@ -131,28 +120,54 @@ app.post('/api/scan', async (req, res) => {
     message = 'EXIT RECORDED — GOODBYE';
     await run('UPDATE students SET inside_campus = FALSE WHERE id = $1', [student.id]);
     student.inside_campus = false;
-  } else if (isExpired) {
-    result = 'denied';
-    message = `CARD EXPIRED (${student.enrollment_year}-${student.expiry_year}) — ENTRY DENIED`;
-    student.status = 'expired';
-  } else if (student.status !== 'active') {
-    result = 'denied';
-    const statusLabels = {
-      graduated: 'GRADUATED — NO LONGER ENROLLED',
-      frozen: 'SEMESTER FROZEN — ENTRY DENIED',
-      suspended: 'SUSPENDED — ENTRY DENIED',
-      dropped: 'DROPPED OUT — ENTRY DENIED'
-    };
-    message = statusLabels[student.status] || 'ENTRY DENIED';
+    lastExitTime.set(uid, now);
   } else {
-    result = 'allowed';
-    message = 'ACTIVE STUDENT — ENTRY ALLOWED';
-    await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
-    student.inside_campus = true;
-  }
+    // Cooldown only on exit→entry (prevent quick re-entry after exit)
+    const lastExit = lastExitTime.get(uid);
+    if (lastExit && (now - lastExit) < COOLDOWN_MS) {
+      const remainSec = Math.ceil((COOLDOWN_MS - (now - lastExit)) / 1000);
+      return res.json({
+        found: true, result: 'denied',
+        message: `PLEASE WAIT ${remainSec}s — COOLDOWN ACTIVE`,
+        cooldown: true, student, mode: scanMode
+      });
+    }
 
-  // Set cooldown AFTER successful scan
-  lastScanTime.set(uid, now);
+    if (isExpired) {
+      result = 'denied';
+      message = `CARD EXPIRED (${student.enrollment_year}-${student.expiry_year}) — ENTRY DENIED`;
+      student.status = 'expired';
+    } else if (student.status === 'suspended' && student.suspended_until) {
+      const suspEnd = new Date(student.suspended_until);
+      if (suspEnd > new Date()) {
+        result = 'denied';
+        const daysLeft = Math.ceil((suspEnd - new Date()) / (1000 * 60 * 60 * 24));
+        message = `SUSPENDED — ${daysLeft} DAY${daysLeft !== 1 ? 'S' : ''} LEFT`;
+      } else {
+        // Suspension expired — auto-restore to enrolled
+        await run("UPDATE students SET status = 'active', suspended_until = NULL WHERE id = $1", [student.id]);
+        student.status = 'active';
+        result = 'allowed';
+        message = 'SUSPENSION ENDED — WELCOME BACK';
+        await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
+        student.inside_campus = true;
+      }
+    } else if (student.status !== 'active') {
+      result = 'denied';
+      const statusLabels = {
+        graduated: 'GRADUATED — NO LONGER ENROLLED',
+        frozen: 'SEMESTER FROZEN — ENTRY DENIED',
+        suspended: 'SUSPENDED — ENTRY DENIED',
+        dropped: 'DROPPED OUT — ENTRY DENIED'
+      };
+      message = statusLabels[student.status] || 'ENTRY DENIED';
+    } else {
+      result = 'allowed';
+      message = 'ENROLLED STUDENT — ENTRY ALLOWED';
+      await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
+      student.inside_campus = true;
+    }
+  }
 
   await run(
     `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode)
@@ -227,12 +242,18 @@ app.put('/api/students/:id', requireAdmin, async (req, res) => {
 });
 
 app.patch('/api/students/:id/status', requireAdmin, async (req, res) => {
-  const { status } = req.body;
+  const { status, suspended_days } = req.body;
   const valid = ['active', 'graduated', 'frozen', 'suspended', 'dropped'];
   if (!valid.includes(status)) {
     return res.status(400).json({ success: false, error: 'Invalid status' });
   }
-  await run('UPDATE students SET status = $1 WHERE id = $2', [status, req.params.id]);
+  if (status === 'suspended' && suspended_days && parseInt(suspended_days) > 0) {
+    const until = new Date();
+    until.setDate(until.getDate() + parseInt(suspended_days));
+    await run('UPDATE students SET status = $1, suspended_until = $2 WHERE id = $3', [status, until.toISOString(), req.params.id]);
+  } else {
+    await run('UPDATE students SET status = $1, suspended_until = NULL WHERE id = $2', [status, req.params.id]);
+  }
   res.json({ success: true });
 });
 
@@ -379,7 +400,7 @@ app.get('/api/logs', requireAdmin, async (req, res) => {
 // --- STATS ---
 app.get('/api/stats', async (req, res) => {
   const total = (await queryOne('SELECT COUNT(*) as c FROM students')).c;
-  const active = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='active'")).c;
+  const enrolled = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='active'")).c;
   const graduated = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='graduated'")).c;
   const frozen = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='frozen'")).c;
   const suspended = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='suspended'")).c;
@@ -393,7 +414,7 @@ app.get('/api/stats', async (req, res) => {
   const insideCampus = (await queryOne("SELECT COUNT(*) as c FROM students WHERE inside_campus = TRUE")).c;
 
   res.json({
-    total: parseInt(total), active: parseInt(active), graduated: parseInt(graduated),
+    total: parseInt(total), enrolled: parseInt(enrolled), graduated: parseInt(graduated),
     frozen: parseInt(frozen), suspended: parseInt(suspended), dropped: parseInt(dropped),
     entriesToday: parseInt(entriesToday), allowedToday: parseInt(allowedToday), deniedToday: parseInt(deniedToday),
     insideCampus: parseInt(insideCampus)
@@ -403,7 +424,7 @@ app.get('/api/stats', async (req, res) => {
 // --- SYNC (for offline kiosk) ---
 app.get('/api/sync', async (req, res) => {
   const students = await query(
-    'SELECT card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus FROM students'
+    'SELECT card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until FROM students'
   );
   res.json({ students, synced_at: new Date().toISOString() });
 });
@@ -464,6 +485,7 @@ async function start() {
   `);
 
   try { await pool.query('ALTER TABLE students ADD COLUMN inside_campus BOOLEAN DEFAULT FALSE'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN suspended_until TIMESTAMPTZ'); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_card_uid ON students(card_uid)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_roll_number ON students(roll_number)');

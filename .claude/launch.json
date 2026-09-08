@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gate-system",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--prefix", "C:/Users/LEGION/Documents/rfid-gate-system"],
+      "port": 4000
+    }
+  ]
+}
