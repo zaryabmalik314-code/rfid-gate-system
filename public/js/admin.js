@@ -466,9 +466,10 @@ let ttDeptsLoaded = false;
 
 async function loadTTDepts() {
   if (ttDeptsLoaded) return;
-  const res = await authFetch('/api/departments');
+  const res = await authFetch('/api/timetable/departments');
   const depts = await res.json();
   const select = document.getElementById('tt-dept');
+  select.innerHTML = '<option value="">All Departments</option>';
   depts.forEach(d => {
     const opt = document.createElement('option');
     opt.value = d;

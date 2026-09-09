@@ -860,6 +860,11 @@ app.get('/api/departments', requireAdmin, async (req, res) => {
   res.json(depts.map(d => d.department));
 });
 
+app.get('/api/timetable/departments', requireAdmin, async (req, res) => {
+  const depts = await query('SELECT DISTINCT department FROM timetable ORDER BY department');
+  res.json(depts.map(d => d.department));
+});
+
 // --- MANUAL RESET (admin) ---
 app.post('/api/reset-campus', requireAdmin, async (req, res) => {
   const result = await pool.query('UPDATE students SET inside_campus = FALSE WHERE inside_campus = TRUE');
