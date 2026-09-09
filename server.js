@@ -696,6 +696,7 @@ function parseTimetableHtml(html) {
 async function fetchPortalPrograms(semLabel) {
   try {
     const html = await portalPost('/Semesters/ajax.php', `semester=${encodeURIComponent(semLabel)}`);
+    console.log(`[SYNC] ajax.php response for "${semLabel}": ${html.length} chars, starts: ${html.substring(0, 150).replace(/\n/g, ' ')}`);
     const programs = {};
     const optRegex = /<option value="(\d+)"[^>]*>([^<]+)<\/option>/g;
     let m;
@@ -707,6 +708,7 @@ async function fetchPortalPrograms(semLabel) {
     }
     return programs;
   } catch (e) {
+    console.log(`[SYNC] fetchPortalPrograms error for "${semLabel}": ${e.message}`);
     return {};
   }
 }
