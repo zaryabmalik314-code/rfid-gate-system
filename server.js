@@ -636,12 +636,12 @@ function portalGet(urlPath) {
   });
 }
 
-function portalPost(path, body) {
+function portalPost(urlPath, body) {
   return new Promise((resolve, reject) => {
     const data = body;
     const opts = {
       hostname: PORTAL_HOST,
-      path: `/semester_info/${path}`,
+      path: urlPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -695,7 +695,7 @@ function parseTimetableHtml(html) {
 
 async function fetchPortalPrograms(semLabel) {
   try {
-    const html = await portalPost('ajax.php', `semester=${encodeURIComponent(semLabel)}`);
+    const html = await portalPost('/Semesters/ajax.php', `semester=${encodeURIComponent(semLabel)}`);
     const programs = {};
     const optRegex = /<option value="(\d+)"[^>]*>([^<]+)<\/option>/g;
     let m;
@@ -713,7 +713,7 @@ async function fetchPortalPrograms(semLabel) {
 
 async function fetchPortalSections(programId, semesterLabel) {
   try {
-    const html = await portalPost('ajax.php', `program=${programId}&semester=${encodeURIComponent(semesterLabel)}`);
+    const html = await portalPost('/Semesters/ajax.php', `program=${programId}&semester=${encodeURIComponent(semesterLabel)}`);
     const sections = {};
     const optRegex = /<option value="(\d+)"[^>]*>([^<]+)<\/option>/g;
     let m;
@@ -737,8 +737,8 @@ app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
   const synced = [];
 
   try {
-    // Step 1: Fetch the portal's main page to get actual semester dropdown values
-    const mainPage = await portalGet('/index.php');
+    // Step 1: Fetch the portal's semester panel to get actual semester dropdown values
+    const mainPage = await portalGet('/Semesters/Semester_pannel.php');
     const semOptions = [];
     const semRegex = /<option[^>]*value="([^"]*Semester[^"]*)"[^>]*>/gi;
     let sm;
@@ -771,7 +771,7 @@ app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
 
         for (const [secName, secId] of sectionEntries) {
           try {
-            const html = await portalPost('SEMESTER_TIMETABLE.php',
+            const html = await portalPost('/Semesters/semester_info/SEMESTER_TIMETABLE.php',
               `semester=${encodeURIComponent(semValue)}&program=${progId}&section=${secId}`
             );
             const classes = parseTimetableHtml(html);
