@@ -64,6 +64,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
         Entry Logs
       </button>
+      <button class="tab" onclick="switchTab('timetable')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Timetable
+      </button>
       <button class="tab" onclick="switchTab('import')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Import / Export
@@ -152,6 +156,78 @@
         </table>
       </div>
       <div class="pagination" id="logs-pagination"></div>
+    </div>
+
+    <!-- TIMETABLE TAB -->
+    <div id="tab-timetable" class="tab-content">
+      <div class="import-section">
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <h2>Upload Timetable (Excel / CSV)</h2>
+        </div>
+        <p>Upload a file with columns: <code>department</code>, <code>semester</code>, <code>section</code>, <code>day</code>, <code>time_start</code>, <code>time_end</code>, <code>subject</code>, <code>room</code>, <code>teacher</code></p>
+        <p>Days must be: monday, tuesday, wednesday, thursday, friday, saturday, sunday. Time format: 09:00, 14:30 etc.</p>
+        <form id="timetable-import-form" onsubmit="handleTimetableImport(event)">
+          <input type="file" id="tt-import-file" accept=".xlsx,.xls,.csv" required>
+          <button type="submit" class="btn-primary">Upload Timetable</button>
+        </form>
+        <div id="tt-import-result" class="import-result hidden"></div>
+      </div>
+
+      <div class="import-section">
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <h2>View Timetable</h2>
+        </div>
+        <div class="toolbar" style="margin-bottom:12px">
+          <select id="tt-dept" onchange="loadTimetable()">
+            <option value="">All Departments</option>
+          </select>
+          <select id="tt-sem" onchange="loadTimetable()">
+            <option value="">All Semesters</option>
+            <option value="1">Sem 1</option><option value="2">Sem 2</option>
+            <option value="3">Sem 3</option><option value="4">Sem 4</option>
+            <option value="5">Sem 5</option><option value="6">Sem 6</option>
+            <option value="7">Sem 7</option><option value="8">Sem 8</option>
+          </select>
+          <select id="tt-day" onchange="loadTimetable()">
+            <option value="">All Days</option>
+            <option value="monday">Monday</option><option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option><option value="thursday">Thursday</option>
+            <option value="friday">Friday</option><option value="saturday">Saturday</option>
+          </select>
+          <button class="btn-small btn-delete" onclick="clearTimetable()" style="margin-left:auto">Clear Filtered</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Sem</th>
+                <th>Sec</th>
+                <th>Day</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Subject</th>
+                <th>Room</th>
+                <th>Teacher</th>
+                <th>Del</th>
+              </tr>
+            </thead>
+            <tbody id="tt-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)" id="tt-count"></div>
+      </div>
+
+      <div class="import-section">
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <h2>Download Timetable Template</h2>
+        </div>
+        <p>Get a sample CSV template for importing timetables.</p>
+        <button class="btn-secondary" onclick="downloadTimetableTemplate()">Download Template</button>
+      </div>
     </div>
 
     <!-- IMPORT TAB -->

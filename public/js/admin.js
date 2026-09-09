@@ -86,6 +86,7 @@ function switchTab(tab) {
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   if (tab === 'logs') loadLogs();
+  if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
 }
 
 // --- STATS ---
@@ -458,4 +459,119 @@ function renderPagination(containerId, totalPages, currentPage, onPageClick) {
       else onPageClick(parseInt(text));
     });
   });
+}
+
+// --- TIMETABLE ---
+let ttDeptsLoaded = false;
+
+async function loadTTDepts() {
+  if (ttDeptsLoaded) return;
+  const res = await authFetch('/api/departments');
+  const depts = await res.json();
+  const select = document.getElementById('tt-dept');
+  depts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    select.appendChild(opt);
+  });
+  ttDeptsLoaded = true;
+}
+
+async function loadTimetable() {
+  const dept = document.getElementById('tt-dept').value;
+  const sem = document.getElementById('tt-sem').value;
+  const day = document.getElementById('tt-day').value;
+
+  const params = new URLSearchParams();
+  if (dept) params.set('department', dept);
+  if (sem) params.set('semester', sem);
+  if (day) params.set('day', day);
+
+  const res = await authFetch(`/api/timetable?${params}`);
+  const rows = await res.json();
+
+  const tbody = document.getElementById('tt-tbody');
+  document.getElementById('tt-count').textContent = `${rows.length} entries`;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:40px">No timetable entries found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.department}</td>
+      <td style="text-align:center">${r.semester}</td>
+      <td style="text-align:center">${r.section}</td>
+      <td style="text-transform:capitalize">${r.day_of_week}</td>
+      <td>${r.time_start}</td>
+      <td>${r.time_end}</td>
+      <td><strong>${r.subject}</strong></td>
+      <td>${r.room || '—'}</td>
+      <td>${r.teacher || '—'}</td>
+      <td><button class="btn-small btn-delete" onclick="deleteTTEntry(${r.id})">×</button></td>
+    </tr>
+  `).join('');
+}
+
+async function deleteTTEntry(id) {
+  await authFetch(`/api/timetable/${id}`, { method: 'DELETE' });
+  loadTimetable();
+}
+
+async function clearTimetable() {
+  const dept = document.getElementById('tt-dept').value;
+  const sem = document.getElementById('tt-sem').value;
+  const filterDesc = [dept, sem ? `Sem ${sem}` : ''].filter(Boolean).join(', ') || 'ALL';
+  if (!confirm(`Clear timetable entries for: ${filterDesc}? This cannot be undone.`)) return;
+
+  const body = {};
+  if (dept) body.department = dept;
+  if (sem) body.semester = sem;
+
+  const res = await authFetch('/api/timetable/clear', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  alert(`Deleted ${data.deleted} timetable entries.`);
+  loadTimetable();
+}
+
+async function handleTimetableImport(e) {
+  e.preventDefault();
+  const file = document.getElementById('tt-import-file').files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const resultDiv = document.getElementById('tt-import-result');
+  resultDiv.classList.remove('hidden', 'success', 'error');
+  resultDiv.textContent = 'Importing timetable...';
+
+  const res = await authFetch('/api/timetable/import', { method: 'POST', body: formData });
+  const data = await res.json();
+
+  if (data.success) {
+    resultDiv.className = 'import-result success';
+    resultDiv.innerHTML = `Imported ${data.imported} of ${data.total} entries.${data.errors.length ? '<br>Errors: ' + data.errors.join(', ') : ''}`;
+    loadTimetable();
+  } else {
+    resultDiv.className = 'import-result error';
+    resultDiv.textContent = 'Error: ' + data.error;
+  }
+}
+
+function downloadTimetableTemplate() {
+  const headers = ['department', 'semester', 'section', 'day', 'time_start', 'time_end', 'subject', 'room', 'teacher'];
+  const sample = ['BS-CMAI', '2', 'A', 'monday', '09:00', '10:30', 'Calculus', 'R-201', 'Dr. Ahmed'];
+  const csv = headers.join(',') + '\n' + sample.join(',') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'timetable_template.csv';
+  a.click();
 }

@@ -219,6 +219,30 @@ function showResult(data) {
       suspItem.style.display = 'none';
     }
 
+    // Timetable info
+    const ttBanner = document.getElementById('timetable-banner');
+    const ttIcon = document.getElementById('tt-icon');
+    const ttText = document.getElementById('tt-text');
+    if (data.timetable) {
+      ttBanner.style.display = 'flex';
+      if (data.timetable.has_classes && data.timetable.next_class) {
+        const nc = data.timetable.next_class;
+        ttBanner.className = 'timetable-banner tt-has-class';
+        ttIcon.textContent = '📚';
+        ttText.innerHTML = `<span class="tt-subject">Next: ${nc.subject}</span><br><span class="tt-detail">${nc.time_start} – ${nc.time_end}${nc.room ? ' • ' + nc.room : ''}</span>`;
+      } else if (data.timetable.has_classes) {
+        ttBanner.className = 'timetable-banner tt-has-class';
+        ttIcon.textContent = '✅';
+        ttText.innerHTML = `<span class="tt-subject">${data.timetable.classes.length} class${data.timetable.classes.length > 1 ? 'es' : ''} today</span><br><span class="tt-detail">All classes done for today</span>`;
+      } else {
+        ttBanner.className = 'timetable-banner tt-no-class';
+        ttIcon.textContent = '⚠️';
+        ttText.innerHTML = `<span class="tt-subject">NO CLASSES SCHEDULED TODAY</span>`;
+      }
+    } else {
+      ttBanner.style.display = 'none';
+    }
+
     const validityEl = document.getElementById('student-validity');
     if (data.student.enrollment_year && data.student.expiry_year) {
       validityEl.textContent = `${data.student.enrollment_year} - ${data.student.expiry_year}`;

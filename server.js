@@ -176,7 +176,26 @@ app.post('/api/scan', async (req, res) => {
     [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode, gate]
   );
 
-  res.json({ found: true, result, message, student, mode: scanMode });
+  // Timetable check on entry
+  let timetable = null;
+  if (scanMode === 'entry' && result === 'allowed') {
+    const todayDay = DAYS[new Date().getDay()];
+    const todayClasses = await query(
+      `SELECT subject, time_start, time_end, room, teacher FROM timetable
+       WHERE department = $1 AND semester = $2 AND LOWER(section) = LOWER($3) AND day_of_week = $4
+       ORDER BY time_start`,
+      [student.department, student.semester, student.section, todayDay]
+    );
+    if (todayClasses.length === 0) {
+      timetable = { has_classes: false, classes: [], next_class: null };
+    } else {
+      const nowTime = new Date().toTimeString().slice(0, 5);
+      const nextClass = todayClasses.find(c => c.time_start > nowTime) || null;
+      timetable = { has_classes: true, classes: todayClasses, next_class: nextClass };
+    }
+  }
+
+  res.json({ found: true, result, message, student, mode: scanMode, timetable });
 });
 
 // --- STUDENTS CRUD (admin-only) ---
@@ -480,6 +499,103 @@ app.get('/api/sync', async (req, res) => {
   res.json({ students, synced_at: new Date().toISOString() });
 });
 
+// --- TIMETABLE ---
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+app.get('/api/timetable', requireAdmin, async (req, res) => {
+  const { department, semester, section, day } = req.query;
+  let where = '1=1';
+  const params = [];
+  let idx = 1;
+  if (department) { where += ` AND department = $${idx}`; params.push(department); idx++; }
+  if (semester) { where += ` AND semester = $${idx}`; params.push(parseInt(semester)); idx++; }
+  if (section) { where += ` AND section = $${idx}`; params.push(section); idx++; }
+  if (day) { where += ` AND day_of_week = $${idx}`; params.push(day.toLowerCase()); idx++; }
+  const rows = await query(`SELECT * FROM timetable WHERE ${where} ORDER BY department, semester, section, day_of_week, time_start`);
+  res.json(rows);
+});
+
+app.post('/api/timetable', requireAdmin, async (req, res) => {
+  const { department, semester, section, day_of_week, time_start, time_end, subject, room, teacher } = req.body;
+  try {
+    await run(
+      `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [department, parseInt(semester), section || 'A', day_of_week.toLowerCase(), time_start, time_end, subject, room || null, teacher || null]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/timetable/:id', requireAdmin, async (req, res) => {
+  await run('DELETE FROM timetable WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
+});
+
+app.post('/api/timetable/clear', requireAdmin, async (req, res) => {
+  const { department, semester, section } = req.body;
+  let where = '1=1';
+  const params = [];
+  let idx = 1;
+  if (department) { where += ` AND department = $${idx}`; params.push(department); idx++; }
+  if (semester) { where += ` AND semester = $${idx}`; params.push(parseInt(semester)); idx++; }
+  if (section) { where += ` AND section = $${idx}`; params.push(section); idx++; }
+  const result = await pool.query(`DELETE FROM timetable WHERE ${where}`, params);
+  res.json({ success: true, deleted: result.rowCount });
+});
+
+app.post('/api/timetable/import', requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+  try {
+    const workbook = XLSX.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+    let imported = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const dept = String(r.department || r.Department || r.DegreeID || r.degree || '').trim();
+      const sem = parseInt(r.semester || r.Semester || r.sem || 0);
+      const sec = String(r.section || r.Section || r.sec || 'A').trim();
+      const day = String(r.day || r.Day || r.day_of_week || '').trim().toLowerCase();
+      const timeStart = String(r.time_start || r.start || r.Start || r.from || '').trim();
+      const timeEnd = String(r.time_end || r.end || r.End || r.to || '').trim();
+      const subject = String(r.subject || r.Subject || r.course || r.Course || '').trim();
+      const room = String(r.room || r.Room || r.venue || r.Venue || '').trim() || null;
+      const teacher = String(r.teacher || r.Teacher || r.instructor || r.Instructor || '').trim() || null;
+
+      if (!dept || !sem || !day || !timeStart || !timeEnd || !subject) {
+        errors.push(`Row ${i + 2}: Missing required fields`);
+        continue;
+      }
+      if (!DAYS.includes(day)) {
+        errors.push(`Row ${i + 2}: Invalid day "${day}"`);
+        continue;
+      }
+
+      try {
+        await run(
+          `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [dept, sem, sec, day, timeStart, timeEnd, subject, room, teacher]
+        );
+        imported++;
+      } catch (err) {
+        errors.push(`Row ${i + 2}: ${err.message}`);
+      }
+    }
+
+    fs.unlinkSync(req.file.path);
+    res.json({ success: true, imported, errors: errors.slice(0, 20), total: rows.length });
+  } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // --- DEPARTMENTS ---
 app.get('/api/departments', requireAdmin, async (req, res) => {
   const depts = await query('SELECT DISTINCT department FROM students ORDER BY department');
@@ -567,6 +683,23 @@ async function start() {
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON entry_logs(timestamp)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_result ON entry_logs(result)');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS timetable (
+      id SERIAL PRIMARY KEY,
+      department TEXT NOT NULL,
+      semester INTEGER NOT NULL,
+      section TEXT DEFAULT 'A',
+      day_of_week TEXT NOT NULL,
+      time_start TEXT NOT NULL,
+      time_end TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      room TEXT,
+      teacher TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_tt_lookup ON timetable(department, semester, section, day_of_week)');
 
   // One-time cleanup: remove seed/test students and their logs
   const seedResult = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-2024-%'");
