@@ -618,6 +618,24 @@ const PORTAL_PROGRAMS = {
 };
 const SECTION_IDS = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
 
+function portalGet(urlPath) {
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: PORTAL_HOST,
+      path: urlPath,
+      method: 'GET'
+    };
+    const req = https.request(opts, (res) => {
+      let html = '';
+      res.on('data', chunk => html += chunk);
+      res.on('end', () => resolve(html));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Portal request timeout')); });
+    req.end();
+  });
+}
+
 function portalPost(path, body) {
   return new Promise((resolve, reject) => {
     const data = body;
@@ -719,63 +737,57 @@ app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
   const synced = [];
 
   try {
+    // Step 1: Fetch the portal's main page to get actual semester dropdown values
+    const mainPage = await portalGet('/index.php');
+    const semOptions = [];
+    const semRegex = /<option[^>]*value="([^"]*Semester[^"]*)"[^>]*>/gi;
+    let sm;
+    while ((sm = semRegex.exec(mainPage)) !== null) {
+      const val = sm[1].trim();
+      if (val) semOptions.push(val);
+    }
+
+    if (semOptions.length === 0) {
+      return res.json({ success: false, error: 'Could not fetch semester list from portal. Portal may be down.' });
+    }
+
     // Clear existing timetable data before full sync
     await run('DELETE FROM timetable');
 
-    for (let sem = 1; sem <= 8; sem++) {
-      const semLabel = `${['1st','2nd','3rd','4th','5th','6th','7th','8th'][sem - 1]} Semester`;
-      // Fetch semester with current session tag (portal expects this format)
-      const fullSemLabel = `${semLabel} Fa-2026 / Fa-2026`;
+    for (const semValue of semOptions) {
+      // Extract semester number from label like "1st Semester Fa-2026 / Fa-2026"
+      const semNumMatch = semValue.match(/(\d)/);
+      const semNum = semNumMatch ? parseInt(semNumMatch[1]) : null;
+      if (!semNum) { errors.push(`Skipped unrecognized semester: ${semValue}`); continue; }
 
-      const programs = await fetchPortalPrograms(semLabel);
+      const programs = await fetchPortalPrograms(semValue);
       if (Object.keys(programs).length === 0) continue;
 
       for (const [progName, progId] of Object.entries(programs)) {
-        const sections = await fetchPortalSections(progId, fullSemLabel);
-        if (Object.keys(sections).length === 0) {
-          // Try with just section IDs 1,2,3
-          for (const [secName, secId] of Object.entries(SECTION_IDS)) {
-            try {
-              const html = await portalPost('SEMESTER_TIMETABLE.php',
-                `semester=${encodeURIComponent(fullSemLabel)}&program=${progId}&section=${secId}`
-              );
-              const classes = parseTimetableHtml(html);
-              if (classes.length === 0) continue;
+        const sections = await fetchPortalSections(progId, semValue);
+        const sectionEntries = Object.keys(sections).length > 0
+          ? Object.entries(sections)
+          : Object.entries(SECTION_IDS);
 
-              for (const c of classes) {
-                await run(
-                  `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                  [progName, sem, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]
-                );
-                totalImported++;
-              }
-              synced.push(`${progName} Sem ${sem} Sec ${secName}: ${classes.length} classes`);
-            } catch (e) {
-              if (!e.message.includes('timeout')) errors.push(`${progName} Sem ${sem} Sec ${secName}: ${e.message}`);
-            }
-          }
-        } else {
-          for (const [secName, secId] of Object.entries(sections)) {
-            try {
-              const html = await portalPost('SEMESTER_TIMETABLE.php',
-                `semester=${encodeURIComponent(fullSemLabel)}&program=${progId}&section=${secId}`
-              );
-              const classes = parseTimetableHtml(html);
-              if (classes.length === 0) { totalSkipped++; continue; }
+        for (const [secName, secId] of sectionEntries) {
+          try {
+            const html = await portalPost('SEMESTER_TIMETABLE.php',
+              `semester=${encodeURIComponent(semValue)}&program=${progId}&section=${secId}`
+            );
+            const classes = parseTimetableHtml(html);
+            if (classes.length === 0) { totalSkipped++; continue; }
 
-              for (const c of classes) {
-                await run(
-                  `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                  [progName, sem, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]
-                );
-                totalImported++;
-              }
-              synced.push(`${progName} Sem ${sem} Sec ${secName}: ${classes.length} classes`);
-            } catch (e) {
-              if (!e.message.includes('timeout')) errors.push(`${progName} Sem ${sem} Sec ${secName}: ${e.message}`);
+            for (const c of classes) {
+              await run(
+                `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                [progName, semNum, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]
+              );
+              totalImported++;
             }
+            synced.push(`${progName} Sem ${semNum} Sec ${secName}: ${classes.length} classes`);
+          } catch (e) {
+            if (!e.message.includes('timeout')) errors.push(`${progName} Sem ${semNum} Sec ${secName}: ${e.message}`);
           }
         }
       }
