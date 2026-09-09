@@ -523,7 +523,7 @@ app.get('/api/timetable', requireAdmin, async (req, res) => {
   if (semester) { where += ` AND semester = $${idx}`; params.push(parseInt(semester)); idx++; }
   if (section) { where += ` AND section = $${idx}`; params.push(section); idx++; }
   if (day) { where += ` AND day_of_week = $${idx}`; params.push(day.toLowerCase()); idx++; }
-  const rows = await query(`SELECT * FROM timetable WHERE ${where} ORDER BY department, semester, section, day_of_week, time_start`);
+  const rows = await query(`SELECT * FROM timetable WHERE ${where} ORDER BY department, semester, section, day_of_week, time_start`, params);
   res.json(rows);
 });
 
@@ -801,6 +801,49 @@ app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Debug: test portal fetch (temporary)
+app.get('/api/timetable/test-portal', requireAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const isFall = now.getMonth() >= 6;
+    const sessionTag = `${isFall ? 'Fa' : 'Sp'}-${curYear}`;
+    const semValue = `1st Semester ${sessionTag} / ${sessionTag}`;
+
+    const programsHtml = await portalPost('/Semesters/ajax.php', `semester=${encodeURIComponent(semValue)}`);
+    const programs = {};
+    const optRegex = /<option value="(\d+)"[^>]*>([^<]+)<\/option>/g;
+    let m;
+    while ((m = optRegex.exec(programsHtml)) !== null) {
+      const name = m[2].trim();
+      if (name && name !== 'Select Program') programs[name] = parseInt(m[1]);
+    }
+
+    let ttHtml = '';
+    let classes = [];
+    const firstProg = Object.entries(programs)[0];
+    if (firstProg) {
+      ttHtml = await portalPost('/Semesters/semester_info/SEMESTER_TIMETABLE.php',
+        `semester=${encodeURIComponent(semValue)}&program=${firstProg[1]}&section=1`
+      );
+      classes = parseTimetableHtml(ttHtml);
+    }
+
+    res.json({
+      semValue,
+      programsHtml: programsHtml.substring(0, 500),
+      programCount: Object.keys(programs).length,
+      programs,
+      ttHtmlLength: ttHtml.length,
+      ttHtmlSample: ttHtml.substring(0, 1000),
+      classesFound: classes.length,
+      classes: classes.slice(0, 5)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 
