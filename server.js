@@ -568,32 +568,11 @@ async function start() {
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON entry_logs(timestamp)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_log_result ON entry_logs(result)');
 
-  const count = await queryOne('SELECT COUNT(*) as c FROM students');
-  if (parseInt(count.c) === 0) {
-    const seeds = [
-      ['LGU-2024-001', 'Ahmed Raza Khan', '001', 'BS-CMAI', 2, 'A', 'active', 2025, 2029],
-      ['LGU-2024-002', 'Fatima Zahra', '015', 'BS-CS', 4, 'B', 'active', 2024, 2028],
-      ['LGU-2024-003', 'Muhammad Bilal', '032', 'BBA', 6, 'A', 'active', 2023, 2027],
-      ['LGU-2024-004', 'Ayesha Siddiqui', '048', 'BS-EE', 3, 'A', 'active', 2025, 2029],
-      ['LGU-2024-005', 'Zaryab Malik', '069', 'BS-CMAI', 2, 'A', 'active', 2025, 2029],
-      ['LGU-2024-006', 'Hassan Ali Qureshi', '077', 'BS-CS', 8, 'B', 'active', 2022, 2026],
-      ['LGU-2024-007', 'Sana Malik', '091', 'BS-CMAI', 4, 'A', 'active', 2020, 2024],
-      ['LGU-2024-008', 'Usman Tariq', '103', 'BBA', 8, 'B', 'active', 2019, 2023],
-      ['LGU-2024-009', 'Hira Noor', '055', 'BS-EE', 5, 'A', 'frozen', 2024, 2028],
-      ['LGU-2024-010', 'Ali Abbas Shah', '088', 'BS-CS', 3, 'A', 'suspended', 2025, 2029],
-      ['LGU-2024-011', 'Maryam Bukhari', '042', 'BBA', 6, 'B', 'active', 2023, 2027],
-      ['LGU-2024-012', 'Kamran Javed', '066', 'BS-EE', 7, 'A', 'dropped', 2022, 2026],
-    ];
-
-    for (const s of seeds) {
-      const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(s[1])}&size=200&background=random&bold=true`;
-      await run(
-        `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [s[0], s[1], s[2], s[3], s[4], s[5], s[6], photoUrl, s[7], s[8]]
-      );
-    }
-    console.log('Database seeded with 12 students.');
+  // One-time cleanup: remove seed/test students and their logs
+  const seedResult = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-2024-%'");
+  if (seedResult.rowCount > 0) {
+    await pool.query("DELETE FROM entry_logs WHERE card_uid LIKE 'LGU-2024-%'");
+    console.log(`Cleaned up ${seedResult.rowCount} test students and their logs.`);
   }
 
   app.listen(PORT, () => {
