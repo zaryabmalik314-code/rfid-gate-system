@@ -195,11 +195,12 @@ function showResult(data) {
     document.getElementById('student-name').textContent = data.student.name;
     document.getElementById('student-roll').textContent = data.student.roll_number;
     document.getElementById('student-dept').textContent = data.student.department;
-    document.getElementById('student-sem').textContent = data.student.semester;
+    const displaySem = data.student.current_semester || data.student.semester;
+    document.getElementById('student-sem').textContent = displaySem;
     document.getElementById('student-sec').textContent = data.student.section;
 
     // Roll line under name
-    document.getElementById('student-roll-line').textContent = `${data.student.roll_number} • ${data.student.department} • Sem ${data.student.semester}`;
+    document.getElementById('student-roll-line').textContent = `${data.student.roll_number} • ${data.student.department} • Sem ${displaySem}`;
 
     // Status badge under photo
     const statusBadge = document.getElementById('student-status-badge');

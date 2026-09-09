@@ -177,28 +177,29 @@ app.post('/api/scan', async (req, res) => {
     [student.card_uid, student.id, student.name, student.roll_number, student.status, result, scanMode, gate]
   );
 
+  // Auto-calculate current semester from roll number (e.g. "Fa-2025/BS CMAI/055")
+  // DB semester is static from import; this derives the live value without touching DB
+  let currentSem = student.semester;
+  const rollMatch = student.roll_number.match(/^(Fa|Sp)-(\d{4})\//i);
+  if (rollMatch) {
+    const startFall = rollMatch[1].toLowerCase() === 'fa';
+    const startYear = parseInt(rollMatch[2]);
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curFall = now.getMonth() >= 7; // Aug-Dec = Fall
+    if (startFall) {
+      currentSem = curFall ? (curYear - startYear) * 2 + 1 : (curYear - startYear) * 2;
+    } else {
+      currentSem = curFall ? (curYear - startYear) * 2 + 2 : (curYear - startYear) * 2 + 1;
+    }
+    if (currentSem < 1) currentSem = 1;
+  }
+  student.current_semester = currentSem;
+
   // Timetable check on entry
   let timetable = null;
   if (scanMode === 'entry' && result === 'allowed') {
     const todayDay = DAYS[new Date().getDay()];
-
-    // Auto-calculate current semester from roll number (e.g. "Fa-2025/BS CMAI/055")
-    // DB semester is static from import; this derives the live value without touching DB
-    let currentSem = student.semester;
-    const rollMatch = student.roll_number.match(/^(Fa|Sp)-(\d{4})\//i);
-    if (rollMatch) {
-      const startFall = rollMatch[1].toLowerCase() === 'fa';
-      const startYear = parseInt(rollMatch[2]);
-      const now = new Date();
-      const curYear = now.getFullYear();
-      const curFall = now.getMonth() >= 7; // Aug-Dec = Fall
-      if (startFall) {
-        currentSem = curFall ? (curYear - startYear) * 2 + 1 : (curYear - startYear) * 2;
-      } else {
-        currentSem = curFall ? (curYear - startYear) * 2 + 2 : (curYear - startYear) * 2 + 1;
-      }
-      if (currentSem < 1) currentSem = 1;
-    }
 
     let todayClasses = await query(
       `SELECT subject, time_start, time_end, room, teacher FROM timetable
