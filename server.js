@@ -731,41 +731,49 @@ async function fetchPortalSections(programId, semesterLabel) {
 
 app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
   const startTime = Date.now();
-  let totalImported = 0;
-  let totalSkipped = 0;
+  const allClasses = [];
   const errors = [];
   const synced = [];
 
   try {
-    // Build semester labels: pattern is "Nth Semester Fa-YYYY / [Fa|Sp]-YYYY"
-    // Current session tag (Fa = Fall). Adjust when semester changes.
     const now = new Date();
     const curYear = now.getFullYear();
-    const isFall = now.getMonth() >= 6; // July onwards = Fall
+    const isFall = now.getMonth() >= 6;
     const sessionTag = `${isFall ? 'Fa' : 'Sp'}-${curYear}`;
     const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th'];
     const semOptions = [];
     for (let i = 0; i < 8; i++) {
-      const semNum = i + 1;
-      // Joining session: odd sems=Fall, even=Spring, counting back
       const yearsBack = Math.floor(i / 2);
       const joinYear = curYear - yearsBack;
       const joinSession = (i % 2 === 0) ? `Fa-${joinYear}` : `Sp-${joinYear}`;
       semOptions.push({
         label: `${ordinals[i]} Semester ${sessionTag} / ${joinSession}`,
-        num: semNum
+        num: i + 1
       });
     }
 
-    // Clear existing timetable data before full sync
-    await run('DELETE FROM timetable');
-
+    // Phase 1: Fetch all data into memory first
+    console.log('[SYNC] Starting portal sync...');
     for (const { label: semValue, num: semNum } of semOptions) {
-      const programs = await fetchPortalPrograms(semValue);
-      if (Object.keys(programs).length === 0) continue;
+      let programs;
+      try {
+        programs = await fetchPortalPrograms(semValue);
+      } catch (e) {
+        console.log(`[SYNC] Failed to fetch programs for ${semValue}: ${e.message}`);
+        errors.push(`Sem ${semNum} programs: ${e.message}`);
+        continue;
+      }
+      if (Object.keys(programs).length === 0) {
+        console.log(`[SYNC] No programs for: ${semValue}`);
+        continue;
+      }
+      console.log(`[SYNC] Sem ${semNum}: ${Object.keys(programs).length} programs`);
 
       for (const [progName, progId] of Object.entries(programs)) {
-        const sections = await fetchPortalSections(progId, semValue);
+        let sections;
+        try {
+          sections = await fetchPortalSections(progId, semValue);
+        } catch (e) { sections = {}; }
         const sectionEntries = Object.keys(sections).length > 0
           ? Object.entries(sections)
           : Object.entries(SECTION_IDS);
@@ -776,30 +784,46 @@ app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
               `semester=${encodeURIComponent(semValue)}&program=${progId}&section=${secId}`
             );
             const classes = parseTimetableHtml(html);
-            if (classes.length === 0) { totalSkipped++; continue; }
+            if (classes.length === 0) continue;
 
             for (const c of classes) {
-              await run(
-                `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                [progName, semNum, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]
-              );
-              totalImported++;
+              allClasses.push([progName, semNum, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]);
             }
             synced.push(`${progName} Sem ${semNum} Sec ${secName}: ${classes.length} classes`);
           } catch (e) {
-            if (!e.message.includes('timeout')) errors.push(`${progName} Sem ${semNum} Sec ${secName}: ${e.message}`);
+            errors.push(`${progName} Sem ${semNum} Sec ${secName}: ${e.message}`);
           }
         }
       }
     }
 
+    console.log(`[SYNC] Fetched ${allClasses.length} classes total. Errors: ${errors.length}`);
+
+    // Phase 2: Only replace DB data if we actually got something
+    if (allClasses.length === 0) {
+      return res.json({
+        success: false,
+        error: `Portal returned 0 classes. Existing timetable data preserved. ${errors.length} errors: ${errors.slice(0, 5).join('; ')}`,
+        errors: errors.slice(0, 20)
+      });
+    }
+
+    await run('DELETE FROM timetable');
+    for (const row of allClasses) {
+      await run(
+        `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, row
+      );
+    }
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[SYNC] Done: ${allClasses.length} classes in ${elapsed}s`);
     res.json({
-      success: true, imported: totalImported, skipped: totalSkipped,
+      success: true, imported: allClasses.length,
       synced, errors: errors.slice(0, 20), elapsed_seconds: parseFloat(elapsed)
     });
   } catch (err) {
+    console.error('[SYNC] Fatal error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
