@@ -246,6 +246,7 @@ function showAddModal() {
   document.getElementById('modal-title').textContent = 'Add Student';
   document.getElementById('edit-id').value = '';
   document.getElementById('student-form').reset();
+  document.getElementById('f-gender').value = '';
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -261,6 +262,10 @@ function editStudent(s) {
   document.getElementById('f-enroll').value = s.enrollment_year || '';
   document.getElementById('f-expiry').value = s.expiry_year || '';
   document.getElementById('f-status').value = s.status;
+  document.getElementById('f-father').value = s.father_name || '';
+  document.getElementById('f-cnic').value = s.cnic || '';
+  document.getElementById('f-phone').value = s.phone || '';
+  document.getElementById('f-gender').value = s.gender || '';
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -281,6 +286,10 @@ async function handleStudentSubmit(e) {
     enrollment_year: document.getElementById('f-enroll').value,
     expiry_year: document.getElementById('f-expiry').value,
     status: document.getElementById('f-status').value,
+    father_name: document.getElementById('f-father').value,
+    cnic: document.getElementById('f-cnic').value,
+    phone: document.getElementById('f-phone').value,
+    gender: document.getElementById('f-gender').value,
   };
 
   const url = id ? `/api/students/${id}` : '/api/students';

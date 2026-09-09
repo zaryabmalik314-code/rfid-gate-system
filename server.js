@@ -214,14 +214,14 @@ app.get('/api/students', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/students', requireAdmin, async (req, res) => {
-  const { card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year } = req.body;
+  const { card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, father_name, cnic, phone, gender } = req.body;
   try {
     await run(
-      `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, father_name, cnic, phone, gender)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [card_uid, name, roll_number, department, parseInt(semester), section || 'A', status || 'active',
        photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`,
-       parseInt(enrollment_year) || null, parseInt(expiry_year) || null]
+       parseInt(enrollment_year) || null, parseInt(expiry_year) || null, father_name || null, cnic || null, phone || null, gender || null]
     );
     res.json({ success: true });
   } catch (err) {
@@ -230,11 +230,11 @@ app.post('/api/students', requireAdmin, async (req, res) => {
 });
 
 app.put('/api/students/:id', requireAdmin, async (req, res) => {
-  const { card_uid, name, roll_number, department, semester, section, status, enrollment_year, expiry_year } = req.body;
+  const { card_uid, name, roll_number, department, semester, section, status, enrollment_year, expiry_year, father_name, cnic, phone, gender } = req.body;
   try {
     await run(
-      `UPDATE students SET card_uid=$1, name=$2, roll_number=$3, department=$4, semester=$5, section=$6, status=$7, enrollment_year=$8, expiry_year=$9 WHERE id=$10`,
-      [card_uid, name, roll_number, department, parseInt(semester), section, status, parseInt(enrollment_year) || null, parseInt(expiry_year) || null, req.params.id]
+      `UPDATE students SET card_uid=$1, name=$2, roll_number=$3, department=$4, semester=$5, section=$6, status=$7, enrollment_year=$8, expiry_year=$9, father_name=$10, cnic=$11, phone=$12, gender=$13 WHERE id=$14`,
+      [card_uid, name, roll_number, department, parseInt(semester), section, status, parseInt(enrollment_year) || null, parseInt(expiry_year) || null, father_name || null, cnic || null, phone || null, gender || null, req.params.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -264,6 +264,23 @@ app.delete('/api/students/:id', requireAdmin, async (req, res) => {
 });
 
 // --- BULK IMPORT ---
+function parseJoiningSession(session) {
+  if (!session) return { enrollYear: null, expiryYear: null, semester: 1 };
+  const match = String(session).match(/(Fa|Sp)-(\d{4})/i);
+  if (!match) return { enrollYear: null, expiryYear: null, semester: 1 };
+  const enrollYear = parseInt(match[2]);
+  const isFall = match[1].toLowerCase() === 'fa';
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  let semCount = (currentYear - enrollYear) * 2;
+  if (isFall) { semCount -= 1; }
+  if (currentMonth >= 8) { semCount += 1; }
+  const semester = Math.max(1, Math.min(8, semCount));
+  const expiryYear = enrollYear + 4;
+  return { enrollYear, expiryYear, semester };
+}
+
 app.post('/api/students/import', requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
@@ -274,39 +291,67 @@ app.post('/api/students/import', requireAdmin, upload.single('file'), async (req
 
     let imported = 0;
     const errors = [];
+    const maxIdRow = await queryOne("SELECT COALESCE(MAX(id), 0) as m FROM students");
+    let uidCounter = parseInt(maxIdRow.m) + 1;
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      const cardUid = String(r.card_uid || r.Card_UID || r.CardUID || r.CARD_UID || '').trim();
-      const name = String(r.name || r.Name || r.STUDENT_NAME || r.student_name || '').trim();
-      const rollNo = String(r.roll_number || r.Roll_Number || r.RollNumber || r.ROLL_NO || r.roll_no || '').trim();
-      const dept = String(r.department || r.Department || r.DEPARTMENT || r.dept || '').trim();
-      const sem = parseInt(r.semester || r.Semester || r.SEMESTER || 1);
+
+      // Support both LGU format (StdRollNo, studentname, DegreeID, etc.) and standard format
+      const name = String(r.studentname || r.name || r.Name || r.STUDENT_NAME || r.student_name || '').trim();
+      const rollNo = String(r.StdRollNo || r.roll_number || r.Roll_Number || r.RollNumber || r.ROLL_NO || r.roll_no || '').trim();
+      const dept = String(r.DegreeID || r.department || r.Department || r.DEPARTMENT || r.dept || '').trim();
+      let cardUid = String(r.card_uid || r.Card_UID || r.CardUID || r.CARD_UID || '').trim();
+      const fatherName = String(r.FatherName || r.father_name || '').trim() || null;
+      const cnic = String(r.CNIC || r.cnic || '').trim() || null;
+      const phone = String(r.PhoneMobilePrimary || r.phone || r.Phone || '').trim() || null;
+      const gender = String(r.Gender || r.gender || '').trim() || null;
+      const joiningSession = r.JoiningSession || r.joining_session || '';
+
+      const sem = parseInt(r.semester || r.Semester || r.SEMESTER || 0);
       const sec = String(r.section || r.Section || r.SECTION || 'A').trim();
       const status = String(r.status || r.Status || r.STATUS || 'active').trim().toLowerCase();
-      const enrollYear = parseInt(r.enrollment_year || r.Enrollment_Year || r.ENROLLMENT_YEAR || 0) || null;
-      const expiryYear = parseInt(r.expiry_year || r.Expiry_Year || r.EXPIRY_YEAR || 0) || null;
+      let enrollYear = parseInt(r.enrollment_year || r.Enrollment_Year || 0) || null;
+      let expiryYear = parseInt(r.expiry_year || r.Expiry_Year || 0) || null;
 
-      if (!cardUid || !name || !rollNo) {
-        errors.push(`Row ${i + 2}: Missing required fields`);
+      if (!name || !rollNo) {
+        errors.push(`Row ${i + 2}: Missing name or roll number`);
         continue;
       }
+
+      // Auto-generate card_uid if not provided
+      if (!cardUid) {
+        cardUid = `LGU-${String(uidCounter).padStart(5, '0')}`;
+        uidCounter++;
+      }
+
+      // Parse joining session for enrollment/expiry/semester if not provided
+      if (joiningSession && (!enrollYear || !expiryYear)) {
+        const parsed = parseJoiningSession(joiningSession);
+        if (!enrollYear) enrollYear = parsed.enrollYear;
+        if (!expiryYear) expiryYear = parsed.expiryYear;
+      }
+      const finalSem = sem || (joiningSession ? parseJoiningSession(joiningSession).semester : 1);
 
       try {
         const validStatus = ['active', 'graduated', 'frozen', 'suspended', 'dropped'].includes(status) ? status : 'active';
         const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
 
-        const existing = await queryOne('SELECT id FROM students WHERE card_uid = $1', [cardUid]);
-        if (existing) {
+        const existingRoll = await queryOne('SELECT id FROM students WHERE roll_number = $1', [rollNo]);
+        if (existingRoll) {
           await run(
-            'UPDATE students SET name=$1, roll_number=$2, department=$3, semester=$4, section=$5, status=$6, photo_url=$7, enrollment_year=$8, expiry_year=$9 WHERE card_uid=$10',
-            [name, rollNo, dept || 'Unknown', sem || 1, sec, validStatus, photoUrl, enrollYear, expiryYear, cardUid]
+            `UPDATE students SET name=$1, department=$2, semester=$3, section=$4, status=$5, photo_url=$6,
+             enrollment_year=$7, expiry_year=$8, father_name=$9, cnic=$10, phone=$11, gender=$12 WHERE roll_number=$13`,
+            [name, dept || 'Unknown', finalSem, sec, validStatus, photoUrl, enrollYear, expiryYear,
+             fatherName, cnic, phone, gender, rollNo]
           );
         } else {
           await run(
-            `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [cardUid, name, rollNo, dept || 'Unknown', sem || 1, sec, validStatus, photoUrl, enrollYear, expiryYear]
+            `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url,
+             enrollment_year, expiry_year, father_name, cnic, phone, gender)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [cardUid, name, rollNo, dept || 'Unknown', finalSem, sec, validStatus, photoUrl,
+             enrollYear, expiryYear, fatherName, cnic, phone, gender]
           );
         }
         imported++;
@@ -316,7 +361,7 @@ app.post('/api/students/import', requireAdmin, upload.single('file'), async (req
     }
 
     fs.unlinkSync(req.file.path);
-    res.json({ success: true, imported, errors, total: rows.length });
+    res.json({ success: true, imported, errors: errors.slice(0, 20), total: rows.length });
   } catch (err) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ success: false, error: err.message });
@@ -425,7 +470,7 @@ app.get('/api/stats', async (req, res) => {
 // --- SYNC (for offline kiosk) ---
 app.get('/api/sync', async (req, res) => {
   const students = await query(
-    'SELECT card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until FROM students'
+    'SELECT card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until, gender FROM students'
   );
   res.json({ students, synced_at: new Date().toISOString() });
 });
@@ -487,6 +532,10 @@ async function start() {
 
   try { await pool.query('ALTER TABLE students ADD COLUMN inside_campus BOOLEAN DEFAULT FALSE'); } catch(e) {}
   try { await pool.query('ALTER TABLE students ADD COLUMN suspended_until TIMESTAMPTZ'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN father_name TEXT'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN cnic TEXT'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN phone TEXT'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN gender TEXT'); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_card_uid ON students(card_uid)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_roll_number ON students(roll_number)');
