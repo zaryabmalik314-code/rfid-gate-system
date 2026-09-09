@@ -68,6 +68,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Timetable
       </button>
+      <button class="tab" onclick="switchTab('analytics')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        Analytics
+      </button>
       <button class="tab" onclick="switchTab('import')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Import / Export
@@ -240,6 +244,50 @@
         </div>
         <p>Get a sample CSV template for importing timetables.</p>
         <button class="btn-secondary" onclick="downloadTimetableTemplate()">Download Template</button>
+      </div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="tab-analytics" class="tab-content">
+      <div class="analytics-grid">
+        <!-- Gender Split -->
+        <div class="chart-card">
+          <div class="chart-title">Gender Distribution</div>
+          <div class="donut-wrap" id="gender-chart"></div>
+          <div class="chart-legend" id="gender-legend"></div>
+        </div>
+        <!-- Status Breakdown -->
+        <div class="chart-card">
+          <div class="chart-title">Status Breakdown</div>
+          <div class="donut-wrap" id="status-chart"></div>
+          <div class="chart-legend" id="status-legend"></div>
+        </div>
+        <!-- Department Distribution -->
+        <div class="chart-card chart-wide">
+          <div class="chart-title">Students by Department</div>
+          <div class="bar-chart" id="dept-chart"></div>
+        </div>
+        <!-- Daily Scan Trend -->
+        <div class="chart-card chart-wide">
+          <div class="chart-title">Scan Activity (Last 7 Days)</div>
+          <div class="bar-chart" id="daily-chart"></div>
+        </div>
+        <!-- Peak Hours -->
+        <div class="chart-card chart-wide">
+          <div class="chart-title">Peak Hours (Last 7 Days)</div>
+          <div class="bar-chart" id="hourly-chart"></div>
+        </div>
+        <!-- Enrollment by Year -->
+        <div class="chart-card">
+          <div class="chart-title">Enrollment by Year</div>
+          <div class="bar-chart" id="year-chart"></div>
+        </div>
+        <!-- Gate Traffic -->
+        <div class="chart-card">
+          <div class="chart-title">Gate Traffic (7 Days)</div>
+          <div class="donut-wrap" id="gate-chart"></div>
+          <div class="chart-legend" id="gate-legend"></div>
+        </div>
       </div>
     </div>
 

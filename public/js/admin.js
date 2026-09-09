@@ -87,6 +87,7 @@ function switchTab(tab) {
   document.getElementById(`tab-${tab}`).classList.add('active');
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
+  if (tab === 'analytics') loadAnalytics();
 }
 
 // --- STATS ---
@@ -607,4 +608,96 @@ function downloadTimetableTemplate() {
   a.href = URL.createObjectURL(blob);
   a.download = 'timetable_template.csv';
   a.click();
+}
+
+// --- ANALYTICS ---
+const CHART_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#10b981', '#e11d48', '#0ea5e9', '#84cc16', '#d946ef', '#64748b'];
+
+function renderDonut(containerId, legendId, items, total) {
+  const el = document.getElementById(containerId);
+  const legend = document.getElementById(legendId);
+  if (!items.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">No data</div>'; return; }
+
+  let gradient = '';
+  let angle = 0;
+  items.forEach((item, i) => {
+    const slice = (item.count / total) * 360;
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+    gradient += `${color} ${angle}deg ${angle + slice}deg, `;
+    angle += slice;
+  });
+  el.style.background = `conic-gradient(${gradient.slice(0, -2)})`;
+  el.innerHTML = `<div class="donut-center"><div class="donut-center-value">${total.toLocaleString()}</div><div class="donut-center-label">Total</div></div>`;
+
+  legend.innerHTML = items.map((item, i) => {
+    const pct = ((item.count / total) * 100).toFixed(1);
+    return `<div class="legend-item"><span class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></span>${item.label} <span class="legend-count">${item.count} (${pct}%)</span></div>`;
+  }).join('');
+}
+
+function renderBars(containerId, items, color) {
+  const el = document.getElementById(containerId);
+  if (!items.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">No data</div>'; return; }
+  const max = Math.max(...items.map(i => i.count));
+  el.innerHTML = items.map((item, idx) => {
+    const pct = max > 0 ? (item.count / max) * 100 : 0;
+    const c = color || CHART_COLORS[idx % CHART_COLORS.length];
+    return `<div class="bar-row"><div class="bar-label" title="${item.label}">${item.label}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c}"></div></div><div class="bar-value">${item.count.toLocaleString()}</div></div>`;
+  }).join('');
+}
+
+function renderVBars(containerId, items, colorFn) {
+  const el = document.getElementById(containerId);
+  if (!items.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">No data</div>'; return; }
+  const max = Math.max(...items.map(i => i.value));
+  el.innerHTML = `<div class="vbar-chart">${items.map((item, i) => {
+    const pct = max > 0 ? (item.value / max) * 100 : 0;
+    const c = colorFn ? colorFn(item, i) : 'var(--accent)';
+    return `<div class="vbar-col"><div class="vbar-value">${item.value}</div><div class="vbar-fill" style="height:${pct}%;background:${c}"></div><div class="vbar-label">${item.label}</div></div>`;
+  }).join('')}</div>`;
+}
+
+async function loadAnalytics() {
+  const res = await authFetch('/api/stats/detailed');
+  const d = await res.json();
+
+  // Gender donut
+  const genderTotal = d.gender.reduce((s, r) => s + r.count, 0);
+  renderDonut('gender-chart', 'gender-legend', d.gender.map(r => ({ label: r.label, count: r.count })), genderTotal);
+
+  // Status donut
+  const statusMap = { active: 'Enrolled', graduated: 'Graduated', frozen: 'Frozen', suspended: 'Suspended', dropped: 'Dropped' };
+  const statusTotal = d.status.reduce((s, r) => s + r.count, 0);
+  renderDonut('status-chart', 'status-legend', d.status.map(r => ({ label: statusMap[r.label] || r.label, count: r.count })), statusTotal);
+
+  // Department bars (top 15)
+  renderBars('dept-chart', d.departments.slice(0, 15).map(r => ({ label: r.label, count: r.count })));
+
+  // Daily scan vertical bars
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dailyItems = d.dailyScans.map(r => {
+    const dt = new Date(r.day);
+    return { label: dayNames[dt.getUTCDay()] + ' ' + (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate(), value: r.total, allowed: r.allowed, denied: r.denied };
+  });
+  renderVBars('daily-chart', dailyItems, () => 'var(--accent)');
+
+  // Peak hours vertical bars
+  const hourItems = [];
+  for (let h = 7; h <= 21; h++) {
+    const found = d.peakHours.find(r => r.hour === h);
+    hourItems.push({ label: h > 12 ? (h - 12) + 'p' : (h === 12 ? '12p' : h + 'a'), value: found ? found.count : 0 });
+  }
+  renderVBars('hourly-chart', hourItems, (item) => {
+    if (item.value === 0) return 'var(--border)';
+    const max = Math.max(...hourItems.map(i => i.value));
+    const ratio = item.value / max;
+    return ratio > 0.7 ? 'var(--red)' : ratio > 0.4 ? 'var(--orange)' : 'var(--green)';
+  });
+
+  // Enrollment year bars
+  renderBars('year-chart', d.enrollmentYears.map(r => ({ label: String(r.label), count: r.count })), 'var(--accent)');
+
+  // Gate traffic donut
+  const gateTotal = d.gatewise.reduce((s, r) => s + r.count, 0);
+  renderDonut('gate-chart', 'gate-legend', d.gatewise.map(r => ({ label: r.label.charAt(0).toUpperCase() + r.label.slice(1), count: r.count })), gateTotal);
 }

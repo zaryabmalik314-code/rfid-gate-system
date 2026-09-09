@@ -521,6 +521,22 @@ app.get('/api/stats', async (req, res) => {
   });
 });
 
+app.get('/api/stats/detailed', requireAdmin, async (req, res) => {
+  const [
+    genderRows, deptRows, statusRows, yearRows,
+    dailyRows, hourlyRows, gatewiseRows
+  ] = await Promise.all([
+    query("SELECT COALESCE(NULLIF(gender,''), 'Unknown') as label, COUNT(*)::int as count FROM students GROUP BY label ORDER BY count DESC"),
+    query("SELECT department as label, COUNT(*)::int as count FROM students GROUP BY department ORDER BY count DESC"),
+    query("SELECT status as label, COUNT(*)::int as count FROM students GROUP BY status ORDER BY count DESC"),
+    query("SELECT enrollment_year as label, COUNT(*)::int as count FROM students WHERE enrollment_year IS NOT NULL GROUP BY enrollment_year ORDER BY enrollment_year"),
+    query("SELECT DATE(timestamp) as day, COUNT(*)::int as total, SUM(CASE WHEN result='allowed' THEN 1 ELSE 0 END)::int as allowed, SUM(CASE WHEN result='denied' THEN 1 ELSE 0 END)::int as denied FROM entry_logs WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY day ORDER BY day"),
+    query("SELECT EXTRACT(HOUR FROM timestamp)::int as hour, COUNT(*)::int as count FROM entry_logs WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY hour ORDER BY hour"),
+    query("SELECT COALESCE(gate_id,'main') as label, COUNT(*)::int as count FROM entry_logs WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY label ORDER BY count DESC"),
+  ]);
+  res.json({ gender: genderRows, departments: deptRows, status: statusRows, enrollmentYears: yearRows, dailyScans: dailyRows, peakHours: hourlyRows, gatewise: gatewiseRows });
+});
+
 // --- SYNC (for offline kiosk) ---
 app.get('/api/sync', async (req, res) => {
   const students = await query(
