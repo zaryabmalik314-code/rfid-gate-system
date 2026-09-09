@@ -341,7 +341,8 @@ async function loadLogs(page = currentLogPage) {
       const time = isNaN(dt) ? l.timestamp : dt.toLocaleString();
       const mode = l.scan_mode || 'entry';
       const gate = l.gate_id || 'main';
-      const gateLabel = gate.charAt(0).toUpperCase() + gate.slice(1);
+      const gateLabels = { gate7: 'Gate 7', gate4: 'Gate 4', main: 'Main', parking: 'Parking' };
+      const gateLabel = gateLabels[gate] || gate.charAt(0).toUpperCase() + gate.slice(1);
       return `
         <tr>
           <td style="white-space:nowrap;font-size:12px">${time}</td>

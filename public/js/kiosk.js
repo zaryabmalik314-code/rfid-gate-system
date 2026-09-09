@@ -292,9 +292,9 @@ function resetToIdle() {
 // --- EVENTS ---
 document.addEventListener('DOMContentLoaded', () => {
   const badge = document.getElementById('gate-badge');
-  const gateNames = { main: 'MAIN GATE', parking: 'PARKING GATE' };
+  const gateNames = { gate7: 'GATE 7 — ADMISSION', gate4: 'GATE 4 — PARKING', main: 'MAIN GATE', parking: 'PARKING GATE' };
   badge.textContent = gateNames[GATE_ID] || GATE_ID.toUpperCase();
-  if (GATE_ID === 'parking') badge.className = 'gate-badge gate-exit';
+  if (GATE_ID === 'gate4' || GATE_ID === 'parking') badge.className = 'gate-badge gate-exit';
 
   document.getElementById('scan-btn').addEventListener('click', handleScan);
   document.getElementById('card-input').addEventListener('keydown', (e) => {
