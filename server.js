@@ -1,13 +1,17 @@
 const express = require('express');
 const crypto = require('crypto');
+const http = require('http');
 const https = require('https');
 const { Pool } = require('pg');
+const { WebSocketServer } = require('ws');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 4000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LguAdmin2026';
@@ -77,6 +81,18 @@ async function run(sql, params = []) {
   await pool.query(sql, params);
 }
 
+// --- WEBSOCKET ---
+function broadcast(type, payload) {
+  const msg = JSON.stringify({ type, ...payload });
+  wss.clients.forEach(client => {
+    if (client.readyState === 1) client.send(msg);
+  });
+}
+
+wss.on('connection', (ws) => {
+  ws.on('error', () => {});
+});
+
 // --- COOLDOWN (only after exit→re-entry, not on consecutive entries) ---
 const COOLDOWN_MS = parseInt(process.env.SCAN_COOLDOWN_MS || '180000');
 const lastExitTime = new Map();
@@ -109,6 +125,16 @@ app.post('/api/scan', async (req, res) => {
        VALUES ($1, NULL, NULL, NULL, NULL, $2, $3, $4)`,
       [uid, result, 'entry', gate]
     );
+    broadcast('scan', {
+      timestamp: new Date().toISOString(),
+      card_uid: uid,
+      student_name: null,
+      roll_number: null,
+      result,
+      mode: 'entry',
+      gate_id: gate,
+      message
+    });
     return res.json({ found: false, result, message });
   }
 
@@ -224,6 +250,20 @@ app.post('/api/scan', async (req, res) => {
       timetable = { has_classes: true, classes: todayClasses, next_class: nextClass };
     }
   }
+
+  // Broadcast to all connected WebSocket clients
+  broadcast('scan', {
+    timestamp: new Date().toISOString(),
+    card_uid: student.card_uid,
+    student_name: student.name,
+    roll_number: student.roll_number,
+    department: student.department,
+    photo_url: student.photo_url,
+    result,
+    mode: scanMode,
+    gate_id: gate,
+    message
+  });
 
   res.json({ found: true, result, message, student, mode: scanMode, timetable });
 });
@@ -1031,7 +1071,7 @@ async function start() {
     console.log(`Cleaned up ${seedResult.rowCount} test students and their logs.`);
   }
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`\n  LGU Smart Gate System running on port ${PORT}`);
     console.log(`  Gate Kiosk (Entry): http://localhost:${PORT}/`);
     console.log(`  Gate Kiosk (Exit):  http://localhost:${PORT}/?mode=exit`);

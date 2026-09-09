@@ -60,6 +60,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Students
       </button>
+      <button class="tab" onclick="switchTab('live')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" stroke-dasharray="2 2"/><circle cx="12" cy="12" r="11" stroke-dasharray="2 3"/></svg>
+        Live Feed
+      </button>
       <button class="tab" onclick="switchTab('logs')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
         Entry Logs
@@ -126,14 +130,33 @@
       <div class="pagination" id="students-pagination"></div>
     </div>
 
+    <!-- LIVE FEED TAB -->
+    <div id="tab-live" class="tab-content">
+      <div class="live-header">
+        <div class="live-status" id="live-status">
+          <span class="live-dot"></span> Connecting...
+        </div>
+        <div class="live-controls">
+          <label class="live-toggle">
+            <input type="checkbox" id="live-sound" checked> Sound
+          </label>
+          <button class="btn-small btn-secondary" onclick="clearLiveFeed()">Clear</button>
+        </div>
+      </div>
+      <div class="live-feed" id="live-feed">
+        <div class="live-empty">Waiting for scans...</div>
+      </div>
+    </div>
+
     <!-- LOGS TAB -->
     <div id="tab-logs" class="tab-content">
       <div class="toolbar">
         <input type="date" id="log-date" onchange="loadLogs()">
         <select id="log-gate" onchange="loadLogs()">
           <option value="">All Gates</option>
+          <option value="gate7">Gate 7 — Admission</option>
+          <option value="gate4">Gate 4 — Parking</option>
           <option value="main">Main Gate</option>
-          <option value="parking">Parking Gate</option>
         </select>
         <select id="log-result" onchange="loadLogs()">
           <option value="">All Results</option>

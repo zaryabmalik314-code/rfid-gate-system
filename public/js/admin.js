@@ -85,6 +85,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'live') initLiveWS();
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
   if (tab === 'analytics') loadAnalytics();
@@ -701,4 +702,128 @@ async function loadAnalytics() {
   // Gate traffic donut
   const gateTotal = d.gatewise.reduce((s, r) => s + r.count, 0);
   renderDonut('gate-chart', 'gate-legend', d.gatewise.map(r => ({ label: r.label.charAt(0).toUpperCase() + r.label.slice(1), count: r.count })), gateTotal);
+}
+
+// --- LIVE FEED (WebSocket) ---
+let liveWS = null;
+let liveConnected = false;
+const MAX_LIVE_ENTRIES = 100;
+
+const liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playLiveBeep(result) {
+  if (!document.getElementById('live-sound')?.checked) return;
+  const osc = liveAudioCtx.createOscillator();
+  const gain = liveAudioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(liveAudioCtx.destination);
+  gain.gain.value = 0.15;
+  if (result === 'allowed') {
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+  } else if (result === 'denied') {
+    osc.frequency.value = 300;
+    osc.type = 'square';
+  } else {
+    osc.frequency.value = 500;
+    osc.type = 'triangle';
+  }
+  osc.start();
+  osc.stop(liveAudioCtx.currentTime + 0.1);
+}
+
+function setLiveStatus(state) {
+  const el = document.getElementById('live-status');
+  if (!el) return;
+  el.className = 'live-status ' + state;
+  const labels = { connected: 'Live', disconnected: 'Disconnected', '': 'Connecting...' };
+  el.innerHTML = `<span class="live-dot"></span> ${labels[state] || 'Connecting...'}`;
+}
+
+function initLiveWS() {
+  if (liveWS && liveWS.readyState <= 1) return;
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  liveWS = new WebSocket(`${protocol}//${location.host}`);
+
+  liveWS.onopen = () => {
+    liveConnected = true;
+    setLiveStatus('connected');
+  };
+
+  liveWS.onclose = () => {
+    liveConnected = false;
+    setLiveStatus('disconnected');
+    setTimeout(initLiveWS, 3000);
+  };
+
+  liveWS.onerror = () => {
+    liveWS.close();
+  };
+
+  liveWS.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'scan') addLiveEntry(data);
+    } catch (err) {}
+  };
+}
+
+function addLiveEntry(data) {
+  const feed = document.getElementById('live-feed');
+  if (!feed) return;
+
+  const empty = feed.querySelector('.live-empty');
+  if (empty) empty.remove();
+
+  const gateLabels = { gate7: 'Gate 7 — Admission', gate4: 'Gate 4 — Parking', main: 'Main Gate', parking: 'Parking Gate' };
+  const gateLabel = gateLabels[data.gate_id] || data.gate_id;
+  const modeLabel = data.mode === 'exit' ? 'EXIT' : 'ENTRY';
+  const time = new Date(data.timestamp);
+  const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const entry = document.createElement('div');
+  entry.className = `live-entry entry-${data.result}`;
+
+  if (data.student_name) {
+    entry.innerHTML = `
+      <img src="${data.photo_url || ''}" class="live-entry-photo" alt="" onerror="this.style.display='none'">
+      <div class="live-entry-info">
+        <div class="live-entry-name">${data.student_name}</div>
+        <div class="live-entry-detail">${data.roll_number || ''} ${data.department ? '• ' + data.department : ''}</div>
+      </div>
+      <div class="live-entry-right">
+        <div class="live-entry-time">${timeStr}</div>
+        <span class="live-entry-result ${data.result}">${modeLabel} — ${data.result}</span>
+        <div class="live-entry-gate">${gateLabel}</div>
+      </div>
+    `;
+  } else {
+    entry.innerHTML = `
+      <div class="live-entry-photo unknown">?</div>
+      <div class="live-entry-info">
+        <div class="live-entry-name">Unknown Card</div>
+        <div class="live-entry-detail">${data.card_uid}</div>
+      </div>
+      <div class="live-entry-right">
+        <div class="live-entry-time">${timeStr}</div>
+        <span class="live-entry-result unknown">UNKNOWN</span>
+        <div class="live-entry-gate">${gateLabel}</div>
+      </div>
+    `;
+  }
+
+  feed.insertBefore(entry, feed.firstChild);
+
+  while (feed.children.length > MAX_LIVE_ENTRIES) {
+    feed.removeChild(feed.lastChild);
+  }
+
+  playLiveBeep(data.result);
+  loadStats();
+}
+
+function clearLiveFeed() {
+  const feed = document.getElementById('live-feed');
+  if (feed) feed.innerHTML = '<div class="live-empty">Waiting for scans...</div>';
 }

@@ -319,4 +319,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') resetToIdle();
   });
   document.getElementById('card-input').focus();
+
+  // WebSocket for live counter updates from other gates
+  function connectWS() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${location.host}`);
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'scan') updateEntryCount();
+      } catch (err) {}
+    };
+    ws.onclose = () => setTimeout(connectWS, 5000);
+    ws.onerror = () => ws.close();
+  }
+  connectWS();
 });
