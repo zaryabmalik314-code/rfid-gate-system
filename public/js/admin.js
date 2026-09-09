@@ -584,6 +584,7 @@ async function syncPortalTimetable() {
         (data.synced.length ? `<div style="font-size:12px;color:var(--muted);max-height:200px;overflow:auto;margin-top:8px">${data.synced.join('<br>')}</div>` : '') +
         (data.errors.length ? `<div style="color:var(--orange);margin-top:8px">Errors: ${data.errors.join(', ')}</div>` : '');
       loadTimetable();
+      ttDeptsLoaded = false;
       loadTTDepts();
     } else {
       resultEl.innerHTML = `<div style="color:var(--red)">Error: ${data.error}</div>`;
