@@ -122,7 +122,7 @@ async function loadStudents(page = currentStudentPage) {
 
   const tbody = document.getElementById('students-tbody');
   if (data.students.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:40px">No students found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:40px">No students found</td></tr>';
   } else {
     const currentYear = new Date().getFullYear();
     tbody.innerHTML = data.students.map(s => {
@@ -135,15 +135,19 @@ async function loadStudents(page = currentStudentPage) {
         const daysLeft = Math.ceil((until - new Date()) / (1000 * 60 * 60 * 24));
         suspInfo = daysLeft > 0 ? ` <span style="font-size:10px;color:var(--orange)">(${daysLeft}d left)</span>` : ' <span style="font-size:10px;color:var(--green)">(expired)</span>';
       }
+      const genderIcon = s.gender === 'Male' ? '♂' : s.gender === 'Female' ? '♀' : '—';
+      const genderColor = s.gender === 'Male' ? 'var(--accent)' : s.gender === 'Female' ? '#e879f9' : 'var(--muted)';
       return `
       <tr>
         <td><img src="${s.photo_url}" class="photo-small" alt="${s.name}"></td>
-        <td><strong>${s.name}</strong></td>
+        <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--muted)">${s.father_name || ''}</span></td>
         <td>${s.roll_number}</td>
         <td style="font-size:11px;color:var(--muted)">${s.card_uid}</td>
         <td>${s.department}</td>
         <td style="text-align:center">${s.semester}</td>
         <td style="text-align:center">${s.section}</td>
+        <td style="text-align:center;color:${genderColor};font-size:16px" title="${s.gender || ''}">${genderIcon}</td>
+        <td style="font-size:11px;color:var(--muted)">${s.phone || '—'}</td>
         <td style="font-size:12px;font-weight:700;${validStyle}">${validStr}${isExpired ? ' ⛔' : ''}</td>
         <td>
           <select class="status-select" onchange="updateStatus(${s.id}, this.value)">
@@ -316,10 +320,12 @@ async function loadLogs(page = currentLogPage) {
   currentLogPage = page;
   const date = document.getElementById('log-date').value;
   const result = document.getElementById('log-result').value;
+  const gate = document.getElementById('log-gate').value;
 
   const params = new URLSearchParams({ page, limit: 50 });
   if (date) params.set('date', date);
   if (result) params.set('result', result);
+  if (gate) params.set('gate', gate);
 
   const res = await authFetch(`/api/logs?${params}`);
   const data = await res.json();

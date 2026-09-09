@@ -416,7 +416,7 @@ app.post('/api/students/bulk-status', requireAdmin, upload.single('file'), async
 
 // --- LOGS ---
 app.get('/api/logs', requireAdmin, async (req, res) => {
-  const { date, result, page = 1, limit = 50 } = req.query;
+  const { date, result, gate, page = 1, limit = 50 } = req.query;
   let where = '1=1';
   const params = [];
   let paramIdx = 1;
@@ -429,6 +429,11 @@ app.get('/api/logs', requireAdmin, async (req, res) => {
   if (result) {
     where += ` AND result = $${paramIdx}`;
     params.push(result);
+    paramIdx++;
+  }
+  if (gate) {
+    where += ` AND gate_id = $${paramIdx}`;
+    params.push(gate);
     paramIdx++;
   }
 

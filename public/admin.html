@@ -105,6 +105,8 @@
               <th>Department</th>
               <th>Sem</th>
               <th>Sec</th>
+              <th>Gender</th>
+              <th>Phone</th>
               <th>Valid</th>
               <th>Status</th>
               <th>Actions</th>
@@ -120,6 +122,11 @@
     <div id="tab-logs" class="tab-content">
       <div class="toolbar">
         <input type="date" id="log-date" onchange="loadLogs()">
+        <select id="log-gate" onchange="loadLogs()">
+          <option value="">All Gates</option>
+          <option value="main">Main Gate</option>
+          <option value="parking">Parking Gate</option>
+        </select>
         <select id="log-result" onchange="loadLogs()">
           <option value="">All Results</option>
           <option value="allowed">Allowed</option>
