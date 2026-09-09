@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+const https = require('https');
 const { Pool } = require('pg');
 const multer = require('multer');
 const XLSX = require('xlsx');
@@ -180,12 +181,23 @@ app.post('/api/scan', async (req, res) => {
   let timetable = null;
   if (scanMode === 'entry' && result === 'allowed') {
     const todayDay = DAYS[new Date().getDay()];
-    const todayClasses = await query(
+    // Try exact match first, then normalized (strip spaces, case-insensitive)
+    let todayClasses = await query(
       `SELECT subject, time_start, time_end, room, teacher FROM timetable
        WHERE department = $1 AND semester = $2 AND LOWER(section) = LOWER($3) AND day_of_week = $4
        ORDER BY time_start`,
       [student.department, student.semester, student.section, todayDay]
     );
+    if (todayClasses.length === 0) {
+      // Fallback: match by removing spaces from both sides
+      todayClasses = await query(
+        `SELECT subject, time_start, time_end, room, teacher FROM timetable
+         WHERE REPLACE(LOWER(department), ' ', '') = REPLACE(LOWER($1), ' ', '')
+         AND semester = $2 AND LOWER(section) = LOWER($3) AND day_of_week = $4
+         ORDER BY time_start`,
+        [student.department, student.semester, student.section, todayDay]
+      );
+    }
     if (todayClasses.length === 0) {
       timetable = { has_classes: false, classes: [], next_class: null };
     } else {
@@ -594,6 +606,196 @@ app.post('/api/timetable/import', requireAdmin, upload.single('file'), async (re
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// --- LGU TIMETABLE PORTAL SYNC ---
+const PORTAL_HOST = 'timetable.lgu.edu.pk';
+const PORTAL_PROGRAMS = {
+  'BSCS': 1, 'BSSE': 2, 'BBA': 9, 'BSCMAI': 123, 'BSAI': 132,
+  'BSEE': 3, 'BSME': 4, 'BSCE': 5, 'BArch': 6, 'BSIT': 7,
+  'LLB': 8, 'BSAcc': 10, 'PharmD': 11, 'BDS': 12, 'MBBS': 13,
+  'BSMS': 14, 'BSPsych': 15, 'BEd': 16, 'BSEM': 17
+};
+const SECTION_IDS = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+
+function portalPost(path, body) {
+  return new Promise((resolve, reject) => {
+    const data = body;
+    const opts = {
+      hostname: PORTAL_HOST,
+      path: `/semester_info/${path}`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+    const req = https.request(opts, (res) => {
+      let html = '';
+      res.on('data', chunk => html += chunk);
+      res.on('end', () => resolve(html));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Portal request timeout')); });
+    req.write(data);
+    req.end();
+  });
+}
+
+function parseTimetableHtml(html) {
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const classes = [];
+
+  for (const day of days) {
+    const dayPattern = new RegExp(`>${day}<`, 'i');
+    const dayMatch = dayPattern.exec(html);
+    if (!dayMatch) continue;
+
+    const dayIdx = dayMatch.index;
+    const dayCapital = day.charAt(0).toUpperCase() + day.slice(1);
+    const nextDayIdx = days.indexOf(day) < days.length - 1
+      ? html.indexOf(`>${days[days.indexOf(day) + 1].charAt(0).toUpperCase() + days[days.indexOf(day) + 1].slice(1)}<`, dayIdx)
+      : html.indexOf('</table>', dayIdx);
+    const rowHtml = html.substring(dayIdx, nextDayIdx > 0 ? nextDayIdx : undefined);
+
+    const tdRegex = /<td[^>]*>(?:(?!<td).)*?<span class='style2'>(.*?)<\/span>.*?<span class='style3'>(.*?)<\/span>.*?<span class='style4'>(.*?)<\/span>.*?<span class='style3'>(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})<\/span>/gs;
+    let match;
+    while ((match = tdRegex.exec(rowHtml)) !== null) {
+      const timeParts = match[4].split('-').map(t => t.trim());
+      classes.push({
+        day_of_week: day,
+        subject: match[1].trim(),
+        room: match[2].trim(),
+        teacher: match[3].trim(),
+        time_start: timeParts[0],
+        time_end: timeParts[1]
+      });
+    }
+  }
+  return classes;
+}
+
+async function fetchPortalPrograms(semLabel) {
+  try {
+    const html = await portalPost('ajax.php', `semester=${encodeURIComponent(semLabel)}`);
+    const programs = {};
+    const optRegex = /<option value="(\d+)"[^>]*>([^<]+)<\/option>/g;
+    let m;
+    while ((m = optRegex.exec(html)) !== null) {
+      const name = m[2].trim();
+      if (name && name !== 'Select Program') {
+        programs[name] = parseInt(m[1]);
+      }
+    }
+    return programs;
+  } catch (e) {
+    return {};
+  }
+}
+
+async function fetchPortalSections(programId, semesterLabel) {
+  try {
+    const html = await portalPost('ajax.php', `program=${programId}&semester=${encodeURIComponent(semesterLabel)}`);
+    const sections = {};
+    const optRegex = /<option value="(\d+)"[^>]*>([^<]+)<\/option>/g;
+    let m;
+    while ((m = optRegex.exec(html)) !== null) {
+      const name = m[2].trim();
+      if (name && name !== 'Select Section') {
+        sections[name] = parseInt(m[1]);
+      }
+    }
+    return sections;
+  } catch (e) {
+    return {};
+  }
+}
+
+app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
+  const startTime = Date.now();
+  let totalImported = 0;
+  let totalSkipped = 0;
+  const errors = [];
+  const synced = [];
+
+  try {
+    // Clear existing timetable data before full sync
+    await run('DELETE FROM timetable');
+
+    for (let sem = 1; sem <= 8; sem++) {
+      const semLabel = `${['1st','2nd','3rd','4th','5th','6th','7th','8th'][sem - 1]} Semester`;
+      // Fetch semester with current session tag (portal expects this format)
+      const fullSemLabel = `${semLabel} Fa-2026 / Fa-2026`;
+
+      const programs = await fetchPortalPrograms(semLabel);
+      if (Object.keys(programs).length === 0) continue;
+
+      for (const [progName, progId] of Object.entries(programs)) {
+        const sections = await fetchPortalSections(progId, fullSemLabel);
+        if (Object.keys(sections).length === 0) {
+          // Try with just section IDs 1,2,3
+          for (const [secName, secId] of Object.entries(SECTION_IDS)) {
+            try {
+              const html = await portalPost('SEMESTER_TIMETABLE.php',
+                `semester=${encodeURIComponent(fullSemLabel)}&program=${progId}&section=${secId}`
+              );
+              const classes = parseTimetableHtml(html);
+              if (classes.length === 0) continue;
+
+              for (const c of classes) {
+                await run(
+                  `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                  [progName, sem, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]
+                );
+                totalImported++;
+              }
+              synced.push(`${progName} Sem ${sem} Sec ${secName}: ${classes.length} classes`);
+            } catch (e) {
+              if (!e.message.includes('timeout')) errors.push(`${progName} Sem ${sem} Sec ${secName}: ${e.message}`);
+            }
+          }
+        } else {
+          for (const [secName, secId] of Object.entries(sections)) {
+            try {
+              const html = await portalPost('SEMESTER_TIMETABLE.php',
+                `semester=${encodeURIComponent(fullSemLabel)}&program=${progId}&section=${secId}`
+              );
+              const classes = parseTimetableHtml(html);
+              if (classes.length === 0) { totalSkipped++; continue; }
+
+              for (const c of classes) {
+                await run(
+                  `INSERT INTO timetable (department, semester, section, day_of_week, time_start, time_end, subject, room, teacher)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                  [progName, sem, secName, c.day_of_week, c.time_start, c.time_end, c.subject, c.room, c.teacher]
+                );
+                totalImported++;
+              }
+              synced.push(`${progName} Sem ${sem} Sec ${secName}: ${classes.length} classes`);
+            } catch (e) {
+              if (!e.message.includes('timeout')) errors.push(`${progName} Sem ${sem} Sec ${secName}: ${e.message}`);
+            }
+          }
+        }
+      }
+    }
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    res.json({
+      success: true, imported: totalImported, skipped: totalSkipped,
+      synced, errors: errors.slice(0, 20), elapsed_seconds: parseFloat(elapsed)
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Normalize department names for timetable lookup (portal name vs DB name)
+app.get('/api/timetable/dept-map', requireAdmin, async (req, res) => {
+  const dbDepts = await query('SELECT DISTINCT department FROM students ORDER BY department');
+  const ttDepts = await query('SELECT DISTINCT department FROM timetable ORDER BY department');
+  res.json({ student_departments: dbDepts.map(d => d.department), timetable_departments: ttDepts.map(d => d.department) });
 });
 
 // --- DEPARTMENTS ---

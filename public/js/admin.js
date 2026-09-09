@@ -565,6 +565,37 @@ async function handleTimetableImport(e) {
   }
 }
 
+async function syncPortalTimetable() {
+  const btn = document.getElementById('portal-sync-btn');
+  const resultEl = document.getElementById('portal-sync-result');
+  if (!confirm('This will replace ALL existing timetable data with fresh data from LGU portal. Continue?')) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Syncing... (this may take a few minutes)';
+  resultEl.classList.add('hidden');
+
+  try {
+    const res = await authFetch('/api/timetable/sync-portal', { method: 'POST', headers: authHeaders() });
+    const data = await res.json();
+    resultEl.classList.remove('hidden');
+    if (data.success) {
+      resultEl.innerHTML = `<div style="color:var(--green)">Synced ${data.imported} classes in ${data.elapsed_seconds}s</div>` +
+        (data.synced.length ? `<div style="font-size:12px;color:var(--muted);max-height:200px;overflow:auto;margin-top:8px">${data.synced.join('<br>')}</div>` : '') +
+        (data.errors.length ? `<div style="color:var(--orange);margin-top:8px">Errors: ${data.errors.join(', ')}</div>` : '');
+      loadTimetable();
+      loadTTDepts();
+    } else {
+      resultEl.innerHTML = `<div style="color:var(--red)">Error: ${data.error}</div>`;
+    }
+  } catch (e) {
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = `<div style="color:var(--red)">Failed: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Sync from Portal';
+  }
+}
+
 function downloadTimetableTemplate() {
   const headers = ['department', 'semester', 'section', 'day', 'time_start', 'time_end', 'subject', 'room', 'teacher'];
   const sample = ['BS-CMAI', '2', 'A', 'monday', '09:00', '10:30', 'Calculus', 'R-201', 'Dr. Ahmed'];
