@@ -737,29 +737,30 @@ app.post('/api/timetable/sync-portal', requireAdmin, async (req, res) => {
   const synced = [];
 
   try {
-    // Step 1: Fetch the portal's semester panel to get actual semester dropdown values
-    const mainPage = await portalGet('/Semesters/Semester_pannel.php');
+    // Build semester labels: pattern is "Nth Semester Fa-YYYY / [Fa|Sp]-YYYY"
+    // Current session tag (Fa = Fall). Adjust when semester changes.
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const isFall = now.getMonth() >= 6; // July onwards = Fall
+    const sessionTag = `${isFall ? 'Fa' : 'Sp'}-${curYear}`;
+    const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th'];
     const semOptions = [];
-    const semRegex = /<option[^>]*value="([^"]*Semester[^"]*)"[^>]*>/gi;
-    let sm;
-    while ((sm = semRegex.exec(mainPage)) !== null) {
-      const val = sm[1].trim();
-      if (val) semOptions.push(val);
-    }
-
-    if (semOptions.length === 0) {
-      return res.json({ success: false, error: 'Could not fetch semester list from portal. Portal may be down.' });
+    for (let i = 0; i < 8; i++) {
+      const semNum = i + 1;
+      // Joining session: odd sems=Fall, even=Spring, counting back
+      const yearsBack = Math.floor(i / 2);
+      const joinYear = curYear - yearsBack;
+      const joinSession = (i % 2 === 0) ? `Fa-${joinYear}` : `Sp-${joinYear}`;
+      semOptions.push({
+        label: `${ordinals[i]} Semester ${sessionTag} / ${joinSession}`,
+        num: semNum
+      });
     }
 
     // Clear existing timetable data before full sync
     await run('DELETE FROM timetable');
 
-    for (const semValue of semOptions) {
-      // Extract semester number from label like "1st Semester Fa-2026 / Fa-2026"
-      const semNumMatch = semValue.match(/(\d)/);
-      const semNum = semNumMatch ? parseInt(semNumMatch[1]) : null;
-      if (!semNum) { errors.push(`Skipped unrecognized semester: ${semValue}`); continue; }
-
+    for (const { label: semValue, num: semNum } of semOptions) {
       const programs = await fetchPortalPrograms(semValue);
       if (Object.keys(programs).length === 0) continue;
 
