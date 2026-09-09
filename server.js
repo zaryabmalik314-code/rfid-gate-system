@@ -181,21 +181,38 @@ app.post('/api/scan', async (req, res) => {
   let timetable = null;
   if (scanMode === 'entry' && result === 'allowed') {
     const todayDay = DAYS[new Date().getDay()];
-    // Try exact match first, then normalized (strip spaces, case-insensitive)
+
+    // Auto-calculate current semester from roll number (e.g. "Fa-2025/BS CMAI/055")
+    // DB semester is static from import; this derives the live value without touching DB
+    let currentSem = student.semester;
+    const rollMatch = student.roll_number.match(/^(Fa|Sp)-(\d{4})\//i);
+    if (rollMatch) {
+      const startFall = rollMatch[1].toLowerCase() === 'fa';
+      const startYear = parseInt(rollMatch[2]);
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curFall = now.getMonth() >= 7; // Aug-Dec = Fall
+      if (startFall) {
+        currentSem = curFall ? (curYear - startYear) * 2 + 1 : (curYear - startYear) * 2;
+      } else {
+        currentSem = curFall ? (curYear - startYear) * 2 + 2 : (curYear - startYear) * 2 + 1;
+      }
+      if (currentSem < 1) currentSem = 1;
+    }
+
     let todayClasses = await query(
       `SELECT subject, time_start, time_end, room, teacher FROM timetable
        WHERE department = $1 AND semester = $2 AND LOWER(section) = LOWER($3) AND day_of_week = $4
        ORDER BY time_start`,
-      [student.department, student.semester, student.section, todayDay]
+      [student.department, currentSem, student.section, todayDay]
     );
     if (todayClasses.length === 0) {
-      // Fallback: match by removing spaces from both sides
       todayClasses = await query(
         `SELECT subject, time_start, time_end, room, teacher FROM timetable
          WHERE REPLACE(LOWER(department), ' ', '') = REPLACE(LOWER($1), ' ', '')
          AND semester = $2 AND LOWER(section) = LOWER($3) AND day_of_week = $4
          ORDER BY time_start`,
-        [student.department, student.semester, student.section, todayDay]
+        [student.department, currentSem, student.section, todayDay]
       );
     }
     if (todayClasses.length === 0) {
