@@ -187,7 +187,7 @@ app.get('/api/students', requireAdmin, async (req, res) => {
   let paramIdx = 1;
 
   if (search) {
-    where += ` AND (name ILIKE $${paramIdx} OR roll_number ILIKE $${paramIdx} OR card_uid ILIKE $${paramIdx})`;
+    where += ` AND (name ILIKE $${paramIdx} OR roll_number ILIKE $${paramIdx} OR card_uid ILIKE $${paramIdx} OR cnic ILIKE $${paramIdx} OR phone ILIKE $${paramIdx} OR father_name ILIKE $${paramIdx})`;
     params.push(`%${search}%`);
     paramIdx++;
   }
