@@ -881,6 +881,10 @@ function renderAlertToFeed(data) {
     </div>
   `;
 
+  if (data.roll_number) {
+    el.onclick = () => openStudentDetail(data);
+  }
+
   feed.insertBefore(el, feed.firstChild);
   while (feed.children.length > MAX_ALERTS) feed.removeChild(feed.lastChild);
 }
@@ -920,4 +924,74 @@ function clearAlerts() {
   updateAlertBadge();
   const feed = document.getElementById('alert-feed');
   if (feed) feed.innerHTML = '<div class="live-empty">No alerts yet — monitoring for suspicious activity...</div>';
+}
+
+// --- STUDENT DETAIL MODAL ---
+async function openStudentDetail(alertData) {
+  const overlay = document.getElementById('student-detail-overlay');
+  const body = document.getElementById('sd-body');
+  overlay.classList.remove('hidden');
+  body.innerHTML = '<div class="sd-loading">Loading student info...</div>';
+
+  try {
+    const res = await authFetch(`/api/students?search=${encodeURIComponent(alertData.roll_number)}&limit=1`);
+    const json = await res.json();
+    const s = json.students?.[0];
+
+    if (!s) {
+      body.innerHTML = `
+        <div class="sd-profile">
+          <div class="sd-photo-placeholder">?</div>
+          <div class="sd-header-info">
+            <div class="sd-name">${alertData.student_name || 'Unknown'}</div>
+            <div class="sd-roll">${alertData.roll_number || 'N/A'}</div>
+          </div>
+        </div>
+        <div class="sd-alert-context ${alertData.severity}">
+          <div class="sd-alert-context-title">${alertData.title}</div>
+          <div class="sd-alert-context-detail">${alertData.detail}</div>
+        </div>`;
+      return;
+    }
+
+    const statusClass = (s.status || 'enrolled').toLowerCase();
+    const photoHtml = s.photo_url
+      ? `<img src="${s.photo_url}" class="sd-photo" alt="Photo">`
+      : `<div class="sd-photo-placeholder">${(s.name || '?')[0].toUpperCase()}</div>`;
+
+    const suspendField = s.status === 'suspended' && s.suspended_until
+      ? `<div class="sd-field"><div class="sd-field-label">Suspended Until</div><div class="sd-field-value" style="color:var(--red)">${new Date(s.suspended_until).toLocaleDateString()}</div></div>`
+      : '';
+
+    body.innerHTML = `
+      <div class="sd-profile">
+        ${photoHtml}
+        <div class="sd-header-info">
+          <div class="sd-name">${s.name}</div>
+          <div class="sd-roll">${s.roll_number} &bull; ${s.department || ''}</div>
+          <span class="sd-status-pill ${statusClass}">${s.status || 'enrolled'}</span>
+        </div>
+      </div>
+      <div class="sd-grid">
+        <div class="sd-field"><div class="sd-field-label">Card UID</div><div class="sd-field-value">${s.card_uid || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">Semester</div><div class="sd-field-value">${s.semester || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">Section</div><div class="sd-field-value">${s.section || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">Father</div><div class="sd-field-value">${s.father_name || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">CNIC</div><div class="sd-field-value">${s.cnic || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">Phone</div><div class="sd-field-value">${s.phone || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">Gender</div><div class="sd-field-value">${s.gender || '—'}</div></div>
+        <div class="sd-field"><div class="sd-field-label">Valid Until</div><div class="sd-field-value">${s.expiry_year || '—'}</div></div>
+        ${suspendField}
+      </div>
+      <div class="sd-alert-context ${alertData.severity}">
+        <div class="sd-alert-context-title">${alertData.title}</div>
+        <div class="sd-alert-context-detail">${alertData.detail}</div>
+      </div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="sd-loading" style="color:var(--red)">Failed to load student details</div>`;
+  }
+}
+
+function closeStudentDetail() {
+  document.getElementById('student-detail-overlay').classList.add('hidden');
 }

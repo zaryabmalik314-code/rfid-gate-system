@@ -507,6 +507,19 @@
     </div>
   </div>
 
+  <!-- STUDENT DETAIL MODAL -->
+  <div class="modal-overlay hidden" id="student-detail-overlay" onclick="closeStudentDetail()">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+      <div class="modal-header">
+        <h2 id="sd-title">Student Details</h2>
+        <button class="modal-close" onclick="closeStudentDetail()">&times;</button>
+      </div>
+      <div class="modal-body" id="sd-body">
+        <div class="sd-loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/admin.js?v=11"></script>
 </body>
 </html>
