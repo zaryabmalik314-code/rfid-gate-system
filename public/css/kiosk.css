@@ -36,161 +36,126 @@ html, body {
 
 .hidden { display: none !important; }
 
-/* ===== TOP BAR ===== */
-.top-bar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: relative;
-}
-
-.top-bar::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 5%, rgba(34,197,94,0.25) 50%, transparent 95%);
-}
-
-.top-bar-inner {
+/* ===== IDLE LAYOUT ===== */
+#idle-view {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 18px 40px;
+  flex-direction: column;
+  height: 100%;
 }
 
-.lgu-logo {
-  width: 52px;
-  height: 52px;
-  border-radius: 10px;
-  object-fit: cover;
-  background: #fff;
-  flex-shrink: 0;
-}
-
-.top-bar-text { flex: 1; }
-
-.uni-name {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: var(--text);
-}
-
-.system-name {
-  font-size: 12px;
-  color: var(--muted);
-  letter-spacing: 0.8px;
-  margin-top: 2px;
-  text-transform: uppercase;
-  font-weight: 400;
-}
-
-.gate-badge {
-  padding: 10px 24px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-
-.gate-entry {
-  background: rgba(34, 197, 94, 0.08);
-  color: var(--green);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-}
-
-.gate-exit {
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--blue);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-/* ===== SCAN PROMPT ===== */
-.scan-prompt {
+.idle-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(34,197,94,0.04) 0%, transparent 60%);
 }
 
-.scan-ring {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  border: 2px solid rgba(34, 197, 94, 0.12);
+/* --- BRAND --- */
+.idle-brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  animation: ringBreathe 4s ease-in-out infinite;
-  position: relative;
-  margin-bottom: 40px;
+  gap: 14px;
+  margin-bottom: 50px;
 }
 
-.scan-ring::before {
-  content: '';
-  position: absolute;
-  inset: -18px;
+.idle-logo {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 1px solid rgba(34, 197, 94, 0.06);
-  animation: ringBreathe 4s ease-in-out infinite 1s;
+  object-fit: cover;
+  background: #fff;
+  border: 3px solid rgba(255,255,255,0.1);
 }
 
-.scan-ring-inner {
-  color: var(--green);
-  opacity: 0.8;
-}
-
-.scan-ring-inner svg { width: 72px; height: 72px; stroke-width: 1.2; }
-
-@keyframes ringBreathe {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.05); opacity: 1; }
-}
-
-.scan-text {
-  font-size: 44px;
-  font-weight: 700;
-  letter-spacing: 10px;
+.idle-uni {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 4px;
   color: var(--text);
-  margin-bottom: 10px;
+  text-transform: uppercase;
+  opacity: 0.7;
 }
 
-.scan-subtext {
-  font-size: 18px;
+/* --- SCAN CARD --- */
+.idle-scan-card {
+  width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 44px 40px 36px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scanMove 3s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+@keyframes scanMove {
+  0%, 100% { top: 8px; opacity: 0.3; }
+  50% { top: calc(100% - 8px); opacity: 0.7; }
+}
+
+.idle-scan-icon {
+  color: var(--green);
+  margin-bottom: 24px;
+}
+
+.idle-scan-icon svg {
+  width: 80px;
+  height: 80px;
+}
+
+.idle-scan-text {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.idle-scan-sub {
+  font-size: 14px;
   color: var(--muted);
-  letter-spacing: 0.3px;
   font-weight: 400;
-  margin-bottom: 36px;
 }
 
+/* --- MANUAL INPUT --- */
 .manual-input {
   display: flex;
   gap: 10px;
 }
 
 .manual-input input {
-  width: 380px;
-  padding: 16px 24px;
-  font-size: 20px;
+  width: 300px;
+  padding: 14px 20px;
+  font-size: 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
   outline: none;
   text-align: center;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   font-weight: 500;
   transition: border-color 0.2s;
 }
 
 .manual-input input:focus {
-  border-color: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.4);
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
@@ -198,12 +163,12 @@ html, body {
   color: var(--muted);
   font-weight: 400;
   letter-spacing: 0.5px;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .manual-input button {
-  padding: 16px 32px;
-  font-size: 18px;
+  padding: 14px 28px;
+  font-size: 16px;
   font-weight: 700;
   background: var(--green);
   color: #0a0e1a;
@@ -222,7 +187,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 40px;
+  padding: 16px 40px;
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
@@ -231,6 +196,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 120px;
 }
 
 .status-dot {
@@ -260,6 +226,33 @@ html, body {
   text-transform: uppercase;
 }
 
+.bottom-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gate-badge {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.gate-entry {
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--green);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.gate-exit {
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--blue);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
 .clock {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
@@ -272,6 +265,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 20px;
+  min-width: 120px;
+  justify-content: flex-end;
 }
 
 .counter-box {
@@ -282,7 +277,7 @@ html, body {
 }
 
 .counter-label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -290,14 +285,14 @@ html, body {
 }
 
 .counter-value {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--green);
 }
 
 .counter-divider {
   width: 1px;
-  height: 30px;
+  height: 28px;
   background: var(--border);
 }
 
