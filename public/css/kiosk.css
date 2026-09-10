@@ -50,20 +50,20 @@ html, body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(34,197,94,0.3), transparent);
+  background: linear-gradient(90deg, transparent 5%, rgba(34,197,94,0.25) 50%, transparent 95%);
 }
 
 .top-bar-inner {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 32px;
+  gap: 20px;
+  padding: 18px 40px;
 }
 
 .lgu-logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
   object-fit: cover;
   background: #fff;
   flex-shrink: 0;
@@ -72,27 +72,27 @@ html, body {
 .top-bar-text { flex: 1; }
 
 .uni-name {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   color: var(--text);
 }
 
 .system-name {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
-  letter-spacing: 1px;
-  margin-top: 1px;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
   text-transform: uppercase;
   font-weight: 400;
 }
 
 .gate-badge {
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
   text-transform: uppercase;
   flex-shrink: 0;
 }
@@ -120,67 +120,67 @@ html, body {
 }
 
 .scan-ring {
-  width: 140px;
-  height: 140px;
+  width: 180px;
+  height: 180px;
   border-radius: 50%;
-  border: 1.5px solid rgba(34, 197, 94, 0.12);
+  border: 2px solid rgba(34, 197, 94, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   animation: ringBreathe 4s ease-in-out infinite;
   position: relative;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .scan-ring::before {
   content: '';
   position: absolute;
-  inset: -16px;
+  inset: -18px;
   border-radius: 50%;
-  border: 1px solid rgba(34, 197, 94, 0.05);
+  border: 1px solid rgba(34, 197, 94, 0.06);
   animation: ringBreathe 4s ease-in-out infinite 1s;
 }
 
 .scan-ring-inner {
   color: var(--green);
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
-.scan-ring-inner svg { width: 56px; height: 56px; stroke-width: 1; }
+.scan-ring-inner svg { width: 72px; height: 72px; stroke-width: 1.2; }
 
 @keyframes ringBreathe {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.04); opacity: 0.8; }
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 1; }
 }
 
 .scan-text {
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: 8px;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 10px;
   color: var(--text);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .scan-subtext {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--muted);
   letter-spacing: 0.3px;
   font-weight: 400;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
 .manual-input {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .manual-input input {
-  width: 320px;
-  padding: 14px 20px;
-  font-size: 16px;
+  width: 380px;
+  padding: 16px 24px;
+  font-size: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   outline: none;
   text-align: center;
@@ -191,24 +191,24 @@ html, body {
 
 .manual-input input:focus {
   border-color: rgba(34, 197, 94, 0.3);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.08);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .manual-input input::placeholder {
   color: var(--muted);
   font-weight: 400;
   letter-spacing: 0.5px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .manual-input button {
-  padding: 14px 28px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 16px 32px;
+  font-size: 18px;
+  font-weight: 700;
   background: var(--green);
   color: #0a0e1a;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   letter-spacing: 2px;
   transition: opacity 0.15s;
@@ -222,7 +222,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 32px;
+  padding: 14px 40px;
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
@@ -230,15 +230,15 @@ html, body {
 .bottom-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 6px var(--green);
+  box-shadow: 0 0 8px var(--green);
   animation: dotPulse 3s ease-in-out infinite;
 }
 
@@ -249,55 +249,55 @@ html, body {
 
 .status-dot.offline {
   background: var(--orange);
-  box-shadow: 0 0 6px var(--orange);
+  box-shadow: 0 0 8px var(--orange);
 }
 
 .system-status {
-  color: var(--muted);
-  font-weight: 500;
-  font-size: 11px;
+  color: var(--green);
+  font-weight: 600;
+  font-size: 14px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
 .clock {
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: 600;
+  font-size: 22px;
   color: var(--muted);
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .bottom-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .counter-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
 }
 
 .counter-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   font-weight: 500;
 }
 
 .counter-value {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
   color: var(--green);
 }
 
 .counter-divider {
   width: 1px;
-  height: 24px;
+  height: 30px;
   background: var(--border);
 }
 
