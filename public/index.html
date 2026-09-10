@@ -4,58 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LGU Smart Gate</title>
-  <link rel="stylesheet" href="css/kiosk.css?v=16">
+  <link rel="stylesheet" href="css/kiosk.css?v=17">
 </head>
 <body>
   <div id="app" class="screen idle-screen">
     <!-- IDLE STATE -->
     <div id="idle-view">
-      <div class="idle-main">
-        <div class="idle-brand">
-          <img src="images/lgu-logo.png" alt="LGU" class="idle-logo">
-          <div class="idle-uni">LAHORE GARRISON UNIVERSITY</div>
-        </div>
-
-        <div class="idle-scan-card">
-          <div class="scan-line"></div>
-          <div class="idle-scan-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M2 7V5a2 2 0 0 1 2-2h3"/>
-              <path d="M17 3h3a2 2 0 0 1 2 2v2"/>
-              <path d="M22 17v2a2 2 0 0 1-2 2h-3"/>
-              <path d="M7 21H4a2 2 0 0 1-2-2v-2"/>
-              <rect x="8" y="8" width="8" height="8" rx="1" stroke-width="1"/>
-            </svg>
+      <!-- Top strip -->
+      <div class="k-topstrip">
+        <div class="k-topleft">
+          <img src="images/lgu-logo.png" alt="LGU" class="k-logo">
+          <div class="k-brand">
+            <div class="k-uni">LAHORE GARRISON UNIVERSITY</div>
+            <div class="k-sys">Smart Gate Verification System</div>
           </div>
-          <div class="idle-scan-text">TAP YOUR CARD</div>
-          <div class="idle-scan-sub">Place your university ID card on the reader</div>
         </div>
-
-        <div class="manual-input">
-          <input type="text" id="card-input" placeholder="Or type roll number" autocomplete="off" autofocus>
-          <button id="scan-btn">VERIFY</button>
+        <div class="k-topright">
+          <div class="k-gate" id="gate-badge">AUTO-DETECT</div>
         </div>
       </div>
 
-      <div class="bottom-bar">
-        <div class="bottom-left">
-          <div class="status-dot" id="status-dot"></div>
-          <span class="system-status" id="status-label">Online</span>
+      <!-- Main scan area -->
+      <div class="k-center">
+        <div class="k-pulse-ring"></div>
+        <div class="k-scan-area">
+          <div class="k-corner k-tl"></div>
+          <div class="k-corner k-tr"></div>
+          <div class="k-corner k-bl"></div>
+          <div class="k-corner k-br"></div>
+          <div class="k-scan-sweep"></div>
+          <svg class="k-nfc-icon" viewBox="0 0 64 64" fill="none">
+            <path d="M32 44a12 12 0 1 0 0-24 12 12 0 0 0 0 24z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M44 20a17 17 0 0 1 0 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M49 15a24 24 0 0 1 0 34" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M20 44a17 17 0 0 1 0-24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M15 49a24 24 0 0 1 0-34" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
         </div>
-        <div class="bottom-center">
-          <div class="gate-badge gate-entry" id="gate-badge">AUTO-DETECT</div>
-          <div class="clock" id="clock"></div>
+        <div class="k-label">TAP YOUR CARD</div>
+        <div class="k-sublabel">Place your university ID on the reader</div>
+        <div class="k-input-row">
+          <input type="text" id="card-input" class="k-input" placeholder="Or enter roll number" autocomplete="off" autofocus>
+          <button id="scan-btn" class="k-btn">VERIFY</button>
         </div>
-        <div class="bottom-right">
-          <div class="counter-box">
-            <span class="counter-label">Inside</span>
-            <span class="counter-value" id="inside-count">0</span>
-          </div>
-          <div class="counter-divider"></div>
-          <div class="counter-box">
-            <span class="counter-label">Today</span>
-            <span class="counter-value" id="entry-count">0</span>
-          </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="k-bottom">
+        <div class="k-status">
+          <div class="k-dot" id="status-dot"></div>
+          <span id="status-label">System Online</span>
+        </div>
+        <div class="k-clock" id="clock"></div>
+        <div class="k-counters">
+          <div class="k-count"><span class="k-count-val" id="inside-count">0</span><span class="k-count-lbl">INSIDE</span></div>
+          <div class="k-count-sep"></div>
+          <div class="k-count"><span class="k-count-val" id="entry-count">0</span><span class="k-count-lbl">TODAY</span></div>
         </div>
       </div>
     </div>
@@ -129,6 +133,6 @@
     </div>
   </div>
 
-  <script src="js/kiosk.js?v=16"></script>
+  <script src="js/kiosk.js?v=17"></script>
 </body>
 </html>
