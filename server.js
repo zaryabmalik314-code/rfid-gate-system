@@ -89,6 +89,15 @@ function broadcast(type, payload) {
   });
 }
 
+function sendAlert(data) {
+  broadcast('alert', data);
+  pool.query(
+    `INSERT INTO alerts (timestamp, alert_type, severity, student_name, roll_number, department, photo_url, gate_id, title, detail)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [data.timestamp, data.alert_type, data.severity, data.student_name, data.roll_number, data.department || null, data.photo_url || null, data.gate_id, data.title, data.detail]
+  ).catch(err => console.error('Alert save error:', err.message));
+}
+
 wss.on('connection', (ws) => {
   ws.on('error', () => {});
 });
@@ -135,7 +144,7 @@ app.post('/api/scan', async (req, res) => {
       gate_id: gate,
       message
     });
-    broadcast('alert', {
+    sendAlert({
       timestamp: new Date().toISOString(),
       alert_type: 'unknown_card',
       severity: 'critical',
@@ -277,7 +286,7 @@ app.post('/api/scan', async (req, res) => {
 
   // Alert: student entered campus with no classes today
   if (timetable && !timetable.has_classes && scanMode === 'entry' && result === 'allowed') {
-    broadcast('alert', {
+    sendAlert({
       timestamp: new Date().toISOString(),
       alert_type: 'no_lecture',
       severity: 'warning',
@@ -293,7 +302,7 @@ app.post('/api/scan', async (req, res) => {
 
   // Alert: suspended student attempted entry
   if (result === 'denied' && (student.status === 'suspended' || message.includes('SUSPENDED'))) {
-    broadcast('alert', {
+    sendAlert({
       timestamp: new Date().toISOString(),
       alert_type: 'suspended_entry',
       severity: 'critical',
@@ -309,7 +318,7 @@ app.post('/api/scan', async (req, res) => {
 
   // Alert: expired card
   if (result === 'denied' && isExpired) {
-    broadcast('alert', {
+    sendAlert({
       timestamp: new Date().toISOString(),
       alert_type: 'expired_card',
       severity: 'warning',
@@ -617,6 +626,23 @@ app.get('/api/stats', async (req, res) => {
     entriesToday: parseInt(entriesToday), allowedToday: parseInt(allowedToday), deniedToday: parseInt(deniedToday),
     insideCampus: parseInt(insideCampus)
   });
+});
+
+app.get('/api/alerts', requireAdmin, async (req, res) => {
+  const { type, limit = 100, offset = 0 } = req.query;
+  let where = '1=1';
+  const params = [];
+  let idx = 1;
+  if (type) { where += ` AND alert_type = $${idx}`; params.push(type); idx++; }
+  params.push(parseInt(limit), parseInt(offset));
+  const rows = await query(`SELECT * FROM alerts WHERE ${where} ORDER BY timestamp DESC LIMIT $${idx} OFFSET $${idx + 1}`, params);
+  const totalRow = await queryOne(`SELECT COUNT(*) as total FROM alerts WHERE ${where}`, type ? [type] : []);
+  res.json({ alerts: rows, total: parseInt(totalRow.total) });
+});
+
+app.delete('/api/alerts', requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM alerts');
+  res.json({ success: true });
 });
 
 app.get('/api/stats/detailed', requireAdmin, async (req, res) => {
@@ -1121,6 +1147,23 @@ async function start() {
     )
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_tt_lookup ON timetable(department, semester, section, day_of_week)');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS alerts (
+      id SERIAL PRIMARY KEY,
+      timestamp TIMESTAMPTZ DEFAULT NOW(),
+      alert_type VARCHAR(50) NOT NULL,
+      severity VARCHAR(20) NOT NULL,
+      student_name VARCHAR(255),
+      roll_number VARCHAR(100),
+      department VARCHAR(100),
+      photo_url TEXT,
+      gate_id VARCHAR(50),
+      title VARCHAR(255),
+      detail TEXT
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_alert_timestamp ON alerts(timestamp)');
 
   // One-time cleanup: remove seed/test students and their logs
   const seedResult = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-2024-%'");

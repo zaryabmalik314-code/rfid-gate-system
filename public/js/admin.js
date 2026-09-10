@@ -87,7 +87,7 @@ function switchTab(tab) {
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   if (tab === 'live') initLiveWS();
-  if (tab === 'alerts') { initLiveWS(); resetAlertBadge(); }
+  if (tab === 'alerts') { initLiveWS(); resetAlertBadge(); loadAlertsFromDB(); }
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
   if (tab === 'analytics') loadAnalytics();
@@ -905,17 +905,25 @@ function resetAlertBadge() {
   updateAlertBadge();
 }
 
-function filterAlerts() {
+async function filterAlerts() {
   const feed = document.getElementById('alert-feed');
   if (!feed) return;
   const filter = document.getElementById('alert-filter')?.value || '';
-  feed.innerHTML = '';
-  const filtered = filter ? allAlerts.filter(a => a.alert_type === filter) : allAlerts;
-  if (filtered.length === 0) {
-    feed.innerHTML = '<div class="live-empty">No alerts match this filter</div>';
-    return;
+  feed.innerHTML = '<div class="sd-loading">Loading...</div>';
+  try {
+    const url = filter ? `/api/alerts?type=${filter}&limit=200` : '/api/alerts?limit=200';
+    const res = await authFetch(url);
+    const json = await res.json();
+    allAlerts = json.alerts || [];
+    feed.innerHTML = '';
+    if (allAlerts.length === 0) {
+      feed.innerHTML = '<div class="live-empty">No alerts match this filter</div>';
+      return;
+    }
+    allAlerts.forEach(data => renderAlertToFeed(data));
+  } catch (e) {
+    feed.innerHTML = '<div class="live-empty">Failed to load alerts</div>';
   }
-  filtered.forEach(data => renderAlertToFeed(data));
 }
 
 function clearAlerts() {
@@ -924,6 +932,29 @@ function clearAlerts() {
   updateAlertBadge();
   const feed = document.getElementById('alert-feed');
   if (feed) feed.innerHTML = '<div class="live-empty">No alerts yet — monitoring for suspicious activity...</div>';
+  authFetch('/api/alerts', { method: 'DELETE' }).catch(() => {});
+}
+
+let alertsLoaded = false;
+async function loadAlertsFromDB() {
+  if (alertsLoaded) return;
+  try {
+    const filter = document.getElementById('alert-filter')?.value || '';
+    const url = filter ? `/api/alerts?type=${filter}&limit=200` : '/api/alerts?limit=200';
+    const res = await authFetch(url);
+    const json = await res.json();
+    if (!json.alerts?.length) return;
+    const feed = document.getElementById('alert-feed');
+    const existingRolls = new Set(allAlerts.map(a => a.timestamp));
+    const newAlerts = json.alerts.filter(a => !existingRolls.has(a.timestamp));
+    if (newAlerts.length === 0) return;
+    allAlerts = [...allAlerts, ...newAlerts].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, MAX_ALERTS);
+    if (feed) {
+      feed.innerHTML = '';
+      allAlerts.forEach(data => renderAlertToFeed(data));
+    }
+    alertsLoaded = true;
+  } catch (e) {}
 }
 
 // --- STUDENT DETAIL MODAL ---
