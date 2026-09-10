@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lgu-gate-v13';
+const CACHE_NAME = 'lgu-gate-v14';
 const ASSETS = [
   '/',
   '/index.html',

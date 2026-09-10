@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LGU Smart Gate</title>
-  <link rel="stylesheet" href="css/kiosk.css?v=11">
+  <link rel="stylesheet" href="css/kiosk.css?v=13">
 </head>
 <body>
   <div id="app" class="screen idle-screen">
@@ -14,8 +14,8 @@
         <div class="top-bar-inner">
           <img src="images/lgu-logo.png" alt="LGU" class="lgu-logo">
           <div class="top-bar-text">
-            <div class="uni-name">LAHORE GARRISON UNIVERSITY</div>
-            <div class="system-name">Smart Gate Verification System</div>
+            <div class="uni-name">Lahore Garrison University</div>
+            <div class="system-name">Smart Gate System</div>
           </div>
           <div class="gate-badge gate-entry" id="gate-badge">AUTO-DETECT</div>
         </div>
@@ -24,27 +24,26 @@
       <div class="scan-prompt">
         <div class="scan-ring">
           <div class="scan-ring-inner">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M2 8V6a2 2 0 0 1 2-2h4"/>
-              <path d="M16 4h4a2 2 0 0 1 2 2v2"/>
-              <path d="M22 16v2a2 2 0 0 1-2 2h-4"/>
-              <path d="M8 20H4a2 2 0 0 1-2-2v-2"/>
-              <rect x="7" y="7" width="10" height="10" rx="1"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M2 7V5a2 2 0 0 1 2-2h3"/>
+              <path d="M17 3h3a2 2 0 0 1 2 2v2"/>
+              <path d="M22 17v2a2 2 0 0 1-2 2h-3"/>
+              <path d="M7 21H4a2 2 0 0 1-2-2v-2"/>
             </svg>
           </div>
         </div>
         <div class="scan-text">TAP YOUR CARD</div>
-        <div class="scan-subtext">Place your university ID card on the reader</div>
+        <div class="scan-subtext">Hold your university ID on the reader</div>
         <div class="manual-input">
-          <input type="text" id="card-input" placeholder="Card UID / Roll Number" autocomplete="off" autofocus>
-          <button id="scan-btn">VERIFY</button>
+          <input type="text" id="card-input" placeholder="Or enter roll number" autocomplete="off" autofocus>
+          <button id="scan-btn">GO</button>
         </div>
       </div>
 
       <div class="bottom-bar">
         <div class="bottom-left">
           <div class="status-dot" id="status-dot"></div>
-          <span class="system-status" id="status-label">System Online</span>
+          <span class="system-status" id="status-label">Online</span>
         </div>
         <div class="clock" id="clock"></div>
         <div class="bottom-right">
@@ -130,6 +129,6 @@
     </div>
   </div>
 
-  <script src="js/kiosk.js?v=11"></script>
+  <script src="js/kiosk.js?v=13"></script>
 </body>
 </html>
