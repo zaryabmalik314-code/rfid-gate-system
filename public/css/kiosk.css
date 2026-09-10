@@ -421,9 +421,20 @@ html, body {
 }
 
 .student-status-badge.badge-suspended {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--red);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fff;
+  border: 2px solid var(--red);
+  font-size: 22px;
+  padding: 12px 36px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: suspendPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes suspendPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.7); }
 }
 
 .student-status-badge.badge-frozen {

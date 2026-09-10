@@ -135,6 +135,16 @@ app.post('/api/scan', async (req, res) => {
       gate_id: gate,
       message
     });
+    broadcast('alert', {
+      timestamp: new Date().toISOString(),
+      alert_type: 'unknown_card',
+      severity: 'critical',
+      student_name: null,
+      roll_number: null,
+      gate_id: gate,
+      title: 'UNREGISTERED CARD',
+      detail: `Unknown card ${uid} scanned at ${gate}`
+    });
     return res.json({ found: false, result, message });
   }
 
@@ -264,6 +274,54 @@ app.post('/api/scan', async (req, res) => {
     gate_id: gate,
     message
   });
+
+  // Alert: student entered campus with no classes today
+  if (timetable && !timetable.has_classes && scanMode === 'entry' && result === 'allowed') {
+    broadcast('alert', {
+      timestamp: new Date().toISOString(),
+      alert_type: 'no_lecture',
+      severity: 'warning',
+      student_name: student.name,
+      roll_number: student.roll_number,
+      department: student.department,
+      photo_url: student.photo_url,
+      gate_id: gate,
+      title: 'NO LECTURES TODAY',
+      detail: `${student.name} entered campus but has no classes scheduled today`
+    });
+  }
+
+  // Alert: suspended student attempted entry
+  if (result === 'denied' && (student.status === 'suspended' || message.includes('SUSPENDED'))) {
+    broadcast('alert', {
+      timestamp: new Date().toISOString(),
+      alert_type: 'suspended_entry',
+      severity: 'critical',
+      student_name: student.name,
+      roll_number: student.roll_number,
+      department: student.department,
+      photo_url: student.photo_url,
+      gate_id: gate,
+      title: 'SUSPENDED STUDENT',
+      detail: `${student.name} attempted entry while suspended`
+    });
+  }
+
+  // Alert: expired card
+  if (result === 'denied' && isExpired) {
+    broadcast('alert', {
+      timestamp: new Date().toISOString(),
+      alert_type: 'expired_card',
+      severity: 'warning',
+      student_name: student.name,
+      roll_number: student.roll_number,
+      department: student.department,
+      photo_url: student.photo_url,
+      gate_id: gate,
+      title: 'EXPIRED CARD',
+      detail: `${student.name} tried to enter with expired card (${student.enrollment_year}-${student.expiry_year})`
+    });
+  }
 
   res.json({ found: true, result, message, student, mode: scanMode, timetable });
 });

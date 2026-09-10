@@ -37,6 +37,7 @@ function showAdmin() {
   loadStats();
   loadStudents();
   loadDepartments();
+  initLiveWS();
 }
 
 async function handleLogin(e) {
@@ -86,6 +87,7 @@ function switchTab(tab) {
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   if (tab === 'live') initLiveWS();
+  if (tab === 'alerts') { initLiveWS(); resetAlertBadge(); }
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
   if (tab === 'analytics') loadAnalytics();
@@ -765,6 +767,7 @@ function initLiveWS() {
     try {
       const data = JSON.parse(e.data);
       if (data.type === 'scan') addLiveEntry(data);
+      if (data.type === 'alert') addAlertEntry(data);
     } catch (err) {}
   };
 }
@@ -826,4 +829,95 @@ function addLiveEntry(data) {
 function clearLiveFeed() {
   const feed = document.getElementById('live-feed');
   if (feed) feed.innerHTML = '<div class="live-empty">Waiting for scans...</div>';
+}
+
+// --- ALERTS ---
+let alertCount = 0;
+const MAX_ALERTS = 200;
+let allAlerts = [];
+
+function addAlertEntry(data) {
+  allAlerts.unshift(data);
+  if (allAlerts.length > MAX_ALERTS) allAlerts.pop();
+
+  const activeTab = document.querySelector('.tab-content.active')?.id;
+  if (activeTab !== 'tab-alerts') {
+    alertCount++;
+    updateAlertBadge();
+  }
+
+  renderAlertToFeed(data);
+}
+
+function renderAlertToFeed(data) {
+  const feed = document.getElementById('alert-feed');
+  if (!feed) return;
+
+  const filter = document.getElementById('alert-filter')?.value || '';
+  if (filter && data.alert_type !== filter) return;
+
+  const empty = feed.querySelector('.live-empty');
+  if (empty) empty.remove();
+
+  const gateLabels = { gate7: 'Gate 7', gate4: 'Gate 4', main: 'Main', parking: 'Parking' };
+  const gateLabel = gateLabels[data.gate_id] || data.gate_id;
+  const time = new Date(data.timestamp);
+  const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const typeLabels = { no_lecture: 'No Lecture', suspended_entry: 'Suspended', unknown_card: 'Unknown', expired_card: 'Expired' };
+  const icons = { no_lecture: '📚', suspended_entry: '🚫', unknown_card: '⚠️', expired_card: '⛔' };
+
+  const el = document.createElement('div');
+  el.className = `alert-entry severity-${data.severity}`;
+  el.dataset.type = data.alert_type;
+  el.innerHTML = `
+    <div class="alert-icon ${data.severity}">${icons[data.alert_type] || '⚠️'}</div>
+    <div class="alert-info">
+      <div class="alert-title">${data.title}</div>
+      <div class="alert-detail">${data.detail} — ${gateLabel}</div>
+    </div>
+    <div class="alert-meta">
+      <div class="alert-time">${timeStr}</div>
+      <span class="alert-type-badge ${data.alert_type}">${typeLabels[data.alert_type] || data.alert_type}</span>
+    </div>
+  `;
+
+  feed.insertBefore(el, feed.firstChild);
+  while (feed.children.length > MAX_ALERTS) feed.removeChild(feed.lastChild);
+}
+
+function updateAlertBadge() {
+  const badge = document.getElementById('alert-badge-count');
+  if (!badge) return;
+  if (alertCount > 0) {
+    badge.style.display = '';
+    badge.textContent = alertCount > 99 ? '99+' : alertCount;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function resetAlertBadge() {
+  alertCount = 0;
+  updateAlertBadge();
+}
+
+function filterAlerts() {
+  const feed = document.getElementById('alert-feed');
+  if (!feed) return;
+  const filter = document.getElementById('alert-filter')?.value || '';
+  feed.innerHTML = '';
+  const filtered = filter ? allAlerts.filter(a => a.alert_type === filter) : allAlerts;
+  if (filtered.length === 0) {
+    feed.innerHTML = '<div class="live-empty">No alerts match this filter</div>';
+    return;
+  }
+  filtered.forEach(data => renderAlertToFeed(data));
+}
+
+function clearAlerts() {
+  allAlerts = [];
+  alertCount = 0;
+  updateAlertBadge();
+  const feed = document.getElementById('alert-feed');
+  if (feed) feed.innerHTML = '<div class="live-empty">No alerts yet — monitoring for suspicious activity...</div>';
 }

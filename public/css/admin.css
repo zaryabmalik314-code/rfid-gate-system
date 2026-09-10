@@ -1005,6 +1005,137 @@ tr:hover td { background: rgba(59, 130, 246, 0.03); }
   font-weight: 600;
 }
 
+/* ===== ALERTS ===== */
+.alert-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.alert-feed {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.alert-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  animation: slide-in 0.3s ease;
+}
+
+.alert-entry:last-child { border-bottom: none; }
+
+.alert-entry.severity-critical {
+  border-left: 4px solid var(--red);
+  background: rgba(239, 68, 68, 0.03);
+}
+
+.alert-entry.severity-warning {
+  border-left: 4px solid var(--orange);
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.alert-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.alert-icon.critical {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.alert-icon.warning {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.alert-info { flex: 1; min-width: 0; }
+
+.alert-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.severity-critical .alert-title { color: var(--red); }
+.severity-warning .alert-title { color: var(--orange); }
+
+.alert-detail {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.alert-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.alert-time {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.alert-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.alert-type-badge.no_lecture {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--orange);
+}
+
+.alert-type-badge.suspended_entry,
+.alert-type-badge.unknown_card {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red);
+}
+
+.alert-type-badge.expired_card {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--orange);
+}
+
+#alert-filter {
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .layout { padding: 12px; }

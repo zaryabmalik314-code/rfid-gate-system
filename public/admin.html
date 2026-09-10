@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LGU Gate Admin</title>
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/admin.css?v=11">
 </head>
 <body>
   <!-- LOGIN OVERLAY -->
@@ -63,6 +63,10 @@
       <button class="tab" onclick="switchTab('live')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" stroke-dasharray="2 2"/><circle cx="12" cy="12" r="11" stroke-dasharray="2 3"/></svg>
         Live Feed
+      </button>
+      <button class="tab" onclick="switchTab('alerts')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Alerts <span class="alert-badge-count" id="alert-badge-count" style="display:none">0</span>
       </button>
       <button class="tab" onclick="switchTab('logs')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
@@ -145,6 +149,29 @@
       </div>
       <div class="live-feed" id="live-feed">
         <div class="live-empty">Waiting for scans...</div>
+      </div>
+    </div>
+
+    <!-- ALERTS TAB -->
+    <div id="tab-alerts" class="tab-content">
+      <div class="live-header">
+        <div class="live-status connected" style="color:var(--orange)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Security Alerts
+        </div>
+        <div class="live-controls">
+          <select id="alert-filter" onchange="filterAlerts()">
+            <option value="">All Alerts</option>
+            <option value="no_lecture">No Lecture</option>
+            <option value="suspended_entry">Suspended Entry</option>
+            <option value="unknown_card">Unknown Card</option>
+            <option value="expired_card">Expired Card</option>
+          </select>
+          <button class="btn-small btn-secondary" onclick="clearAlerts()">Clear All</button>
+        </div>
+      </div>
+      <div class="alert-feed" id="alert-feed">
+        <div class="live-empty">No alerts yet — monitoring for suspicious activity...</div>
       </div>
     </div>
 
@@ -480,6 +507,6 @@
     </div>
   </div>
 
-  <script src="js/admin.js"></script>
+  <script src="js/admin.js?v=11"></script>
 </body>
 </html>
