@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LGU Gate Admin</title>
-  <link rel="stylesheet" href="css/admin.css?v=13">
+  <link rel="stylesheet" href="css/admin.css?v=14">
 </head>
 <body>
   <!-- LOGIN OVERLAY -->
@@ -291,44 +291,66 @@
 
     <!-- ANALYTICS TAB -->
     <div id="tab-analytics" class="tab-content">
-      <div class="analytics-grid">
-        <!-- Gender Split -->
-        <div class="chart-card">
-          <div class="chart-title">Gender Distribution</div>
-          <div class="donut-wrap" id="gender-chart"></div>
-          <div class="chart-legend" id="gender-legend"></div>
+      <!-- Quick summary row -->
+      <div class="an-summary" id="an-summary"></div>
+
+      <!-- Activity section -->
+      <div class="an-section">
+        <div class="an-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Gate Activity
         </div>
-        <!-- Status Breakdown -->
-        <div class="chart-card">
-          <div class="chart-title">Status Breakdown</div>
-          <div class="donut-wrap" id="status-chart"></div>
-          <div class="chart-legend" id="status-legend"></div>
+        <div class="analytics-grid">
+          <div class="chart-card chart-wide">
+            <div class="chart-header">
+              <div class="chart-title">Scan Trend — Last 7 Days</div>
+              <div class="chart-subtitle" id="daily-total-label"></div>
+            </div>
+            <div class="bar-chart" id="daily-chart"></div>
+          </div>
+          <div class="chart-card chart-wide">
+            <div class="chart-header">
+              <div class="chart-title">Peak Hours</div>
+              <div class="chart-subtitle">When do students enter most?</div>
+            </div>
+            <div class="bar-chart" id="hourly-chart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Gate Traffic</div>
+            <div class="donut-wrap" id="gate-chart"></div>
+            <div class="chart-legend" id="gate-legend"></div>
+          </div>
         </div>
-        <!-- Department Distribution -->
-        <div class="chart-card chart-wide">
-          <div class="chart-title">Students by Department</div>
-          <div class="bar-chart" id="dept-chart"></div>
+      </div>
+
+      <!-- Students section -->
+      <div class="an-section">
+        <div class="an-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Student Demographics
         </div>
-        <!-- Daily Scan Trend -->
-        <div class="chart-card chart-wide">
-          <div class="chart-title">Scan Activity (Last 7 Days)</div>
-          <div class="bar-chart" id="daily-chart"></div>
-        </div>
-        <!-- Peak Hours -->
-        <div class="chart-card chart-wide">
-          <div class="chart-title">Peak Hours (Last 7 Days)</div>
-          <div class="bar-chart" id="hourly-chart"></div>
-        </div>
-        <!-- Enrollment by Year -->
-        <div class="chart-card">
-          <div class="chart-title">Enrollment by Year</div>
-          <div class="bar-chart" id="year-chart"></div>
-        </div>
-        <!-- Gate Traffic -->
-        <div class="chart-card">
-          <div class="chart-title">Gate Traffic (7 Days)</div>
-          <div class="donut-wrap" id="gate-chart"></div>
-          <div class="chart-legend" id="gate-legend"></div>
+        <div class="analytics-grid">
+          <div class="chart-card">
+            <div class="chart-title">Gender</div>
+            <div class="donut-wrap" id="gender-chart"></div>
+            <div class="chart-legend" id="gender-legend"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Status</div>
+            <div class="donut-wrap" id="status-chart"></div>
+            <div class="chart-legend" id="status-legend"></div>
+          </div>
+          <div class="chart-card chart-wide">
+            <div class="chart-header">
+              <div class="chart-title">Top Departments</div>
+              <div class="chart-subtitle" id="dept-count-label"></div>
+            </div>
+            <div class="bar-chart" id="dept-chart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Enrollment Year</div>
+            <div class="bar-chart" id="year-chart"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -512,6 +534,6 @@
     </div>
   </div>
 
-  <script src="js/admin.js?v=13"></script>
+  <script src="js/admin.js?v=14"></script>
 </body>
 </html>

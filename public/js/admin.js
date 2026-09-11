@@ -661,31 +661,64 @@ function renderVBars(containerId, items, colorFn) {
   }).join('')}</div>`;
 }
 
+function renderStackedVBars(containerId, items) {
+  const el = document.getElementById(containerId);
+  if (!items.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">No data</div>'; return; }
+  const max = Math.max(...items.map(i => i.allowed + i.denied));
+  el.innerHTML = `<div class="vbar-chart">${items.map(item => {
+    const total = item.allowed + item.denied;
+    const h = max > 0 ? (total / max) * 100 : 0;
+    const allowedH = total > 0 ? (item.allowed / total) * h : 0;
+    const deniedH = total > 0 ? (item.denied / total) * h : 0;
+    return `<div class="vbar-col"><div class="vbar-value">${total}</div><div class="vbar-fill-stack" style="height:${h}%"><div class="vbar-seg" style="height:${deniedH > 0 ? (item.denied/total*100) : 0}%;background:var(--red)"></div><div class="vbar-seg" style="flex:1;background:var(--green)"></div></div><div class="vbar-label">${item.label}</div></div>`;
+  }).join('')}</div>`;
+}
+
 async function loadAnalytics() {
   const res = await authFetch('/api/stats/detailed');
   const d = await res.json();
 
-  // Gender donut
-  const genderTotal = d.gender.reduce((s, r) => s + r.count, 0);
-  renderDonut('gender-chart', 'gender-legend', d.gender.map(r => ({ label: r.label, count: r.count })), genderTotal);
+  // --- Summary cards ---
+  const weekTotal = d.dailyScans.reduce((s, r) => s + r.total, 0);
+  const weekAllowed = d.dailyScans.reduce((s, r) => s + r.allowed, 0);
+  const weekDenied = d.dailyScans.reduce((s, r) => s + r.denied, 0);
+  const allowRate = weekTotal > 0 ? ((weekAllowed / weekTotal) * 100).toFixed(1) : '0';
+  const peakHour = d.peakHours.length ? d.peakHours.reduce((a, b) => a.count > b.count ? a : b) : null;
+  const peakLabel = peakHour ? (peakHour.hour > 12 ? (peakHour.hour - 12) + ':00 PM' : (peakHour.hour === 12 ? '12:00 PM' : peakHour.hour + ':00 AM')) : '—';
+  const topDept = d.departments.length ? d.departments[0] : null;
 
-  // Status donut
-  const statusMap = { active: 'Enrolled', graduated: 'Graduated', frozen: 'Frozen', suspended: 'Suspended', dropped: 'Dropped' };
-  const statusTotal = d.status.reduce((s, r) => s + r.count, 0);
-  renderDonut('status-chart', 'status-legend', d.status.map(r => ({ label: statusMap[r.label] || r.label, count: r.count })), statusTotal);
+  document.getElementById('an-summary').innerHTML = `
+    <div class="an-stat">
+      <div class="an-stat-label">Scans This Week</div>
+      <div class="an-stat-value">${weekTotal.toLocaleString()}</div>
+      <div class="an-stat-sub"><span class="up">${weekAllowed.toLocaleString()} allowed</span> · <span class="down">${weekDenied.toLocaleString()} denied</span></div>
+    </div>
+    <div class="an-stat">
+      <div class="an-stat-label">Allow Rate</div>
+      <div class="an-stat-value">${allowRate}%</div>
+      <div class="an-stat-sub"><span class="neutral">${weekDenied} denied of ${weekTotal}</span></div>
+    </div>
+    <div class="an-stat">
+      <div class="an-stat-label">Busiest Hour</div>
+      <div class="an-stat-value">${peakLabel}</div>
+      <div class="an-stat-sub"><span class="neutral">${peakHour ? peakHour.count + ' scans (7-day)' : 'No data'}</span></div>
+    </div>
+    <div class="an-stat">
+      <div class="an-stat-label">Top Department</div>
+      <div class="an-stat-value" style="font-size:18px">${topDept ? topDept.label : '—'}</div>
+      <div class="an-stat-sub"><span class="neutral">${topDept ? topDept.count + ' students' : 'No data'}</span></div>
+    </div>`;
 
-  // Department bars (top 15)
-  renderBars('dept-chart', d.departments.slice(0, 15).map(r => ({ label: r.label, count: r.count })));
-
-  // Daily scan vertical bars
+  // --- Daily scan stacked bars (allowed vs denied) ---
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const dailyItems = d.dailyScans.map(r => {
     const dt = new Date(r.day);
-    return { label: dayNames[dt.getUTCDay()] + ' ' + (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate(), value: r.total, allowed: r.allowed, denied: r.denied };
+    return { label: dayNames[dt.getUTCDay()] + ' ' + (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate(), allowed: r.allowed, denied: r.denied };
   });
-  renderVBars('daily-chart', dailyItems, () => 'var(--accent)');
+  document.getElementById('daily-total-label').textContent = weekTotal + ' total scans';
+  renderStackedVBars('daily-chart', dailyItems);
 
-  // Peak hours vertical bars
+  // --- Peak hours ---
   const hourItems = [];
   for (let h = 7; h <= 21; h++) {
     const found = d.peakHours.find(r => r.hour === h);
@@ -698,12 +731,25 @@ async function loadAnalytics() {
     return ratio > 0.7 ? 'var(--red)' : ratio > 0.4 ? 'var(--orange)' : 'var(--green)';
   });
 
-  // Enrollment year bars
-  renderBars('year-chart', d.enrollmentYears.map(r => ({ label: String(r.label), count: r.count })), 'var(--accent)');
-
-  // Gate traffic donut
+  // --- Gate traffic donut ---
   const gateTotal = d.gatewise.reduce((s, r) => s + r.count, 0);
   renderDonut('gate-chart', 'gate-legend', d.gatewise.map(r => ({ label: r.label.charAt(0).toUpperCase() + r.label.slice(1), count: r.count })), gateTotal);
+
+  // --- Gender donut ---
+  const genderTotal = d.gender.reduce((s, r) => s + r.count, 0);
+  renderDonut('gender-chart', 'gender-legend', d.gender.map(r => ({ label: r.label, count: r.count })), genderTotal);
+
+  // --- Status donut ---
+  const statusMap = { active: 'Enrolled', graduated: 'Graduated', frozen: 'Frozen', suspended: 'Suspended', dropped: 'Dropped' };
+  const statusTotal = d.status.reduce((s, r) => s + r.count, 0);
+  renderDonut('status-chart', 'status-legend', d.status.map(r => ({ label: statusMap[r.label] || r.label, count: r.count })), statusTotal);
+
+  // --- Department bars (top 10) ---
+  document.getElementById('dept-count-label').textContent = d.departments.length + ' departments';
+  renderBars('dept-chart', d.departments.slice(0, 10).map(r => ({ label: r.label, count: r.count })));
+
+  // --- Enrollment year bars ---
+  renderBars('year-chart', d.enrollmentYears.map(r => ({ label: String(r.label), count: r.count })), 'var(--accent)');
 }
 
 // --- LIVE FEED (WebSocket) ---
