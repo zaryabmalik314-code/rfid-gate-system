@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LGU Card Registration Tool</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #060b18;
+      --surface: #0d1425;
+      --surface2: #131d33;
+      --border: #1a2744;
+      --text: #eaf0ff;
+      --muted: #5a6b8a;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .layout {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid rgba(59,130,246,0.15);
+    }
+    header img { width: 36px; height: 36px; }
+    .h-title { font-size: 16px; font-weight: 700; }
+    .h-sub { font-size: 12px; color: var(--muted); }
+
+    /* Entry form */
+    .entry-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .entry-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .field label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .field input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input.uid-input {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .add-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .add-btn:hover { opacity: 0.85; }
+    .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hint kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+    .count-badge {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .count-badge strong { color: var(--text); font-size: 20px; }
+    .toolbar-actions { display: flex; gap: 8px; }
+    .tb-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.2s;
+    }
+    .tb-btn:hover { border-color: var(--accent); }
+    .tb-btn.export-btn { background: var(--green); border-color: var(--green); color: #000; font-weight: 700; }
+    .tb-btn.export-btn:hover { opacity: 0.85; }
+    .tb-btn.danger { color: var(--red); }
+    .tb-btn.danger:hover { border-color: var(--red); }
+    .search-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      width: 200px;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    /* Table */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    tbody td {
+      padding: 10px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(26,39,68,0.5);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: rgba(59,130,246,0.04); }
+    .td-uid {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent);
+    }
+    .td-roll { font-weight: 600; }
+    .td-name { color: var(--muted); }
+    .td-time { color: var(--muted); font-size: 11px; }
+    .del-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .del-btn:hover { color: var(--red); border-color: var(--red); }
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+    .empty-state svg { margin-bottom: 12px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--green);
+      color: #000;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 50;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: var(--red); color: #fff; }
+
+    /* Duplicate warning */
+    .dup-warn {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid var(--orange);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--orange);
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .entry-row { flex-direction: column; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .search-input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <img src="images/lgu-logo.png" alt="LGU">
+      <div>
+        <div class="h-title">Card Registration Tool</div>
+        <div class="h-sub">Map RFID card UIDs to student roll numbers</div>
+      </div>
+    </header>
+
+    <div class="entry-box">
+      <div class="entry-row">
+        <div class="field">
+          <label>Card UID (scan or type)</label>
+          <input type="text" id="uid-input" class="uid-input" placeholder="Tap card on reader..." autocomplete="off" autofocus>
+        </div>
+        <div class="field">
+          <label>Roll Number</label>
+          <input type="text" id="roll-input" placeholder="e.g. FA25-BSCMA-069" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Name (optional)</label>
+          <input type="text" id="name-input" placeholder="Student name" autocomplete="off">
+        </div>
+        <button class="add-btn" id="add-btn">ADD</button>
+      </div>
+      <div class="dup-warn" id="dup-warn"></div>
+      <div class="hint">Scan card to auto-fill UID, then type roll number and press <kbd>Enter</kbd> or click ADD. Data saves to your browser automatically.</div>
+    </div>
+
+    <div class="toolbar">
+      <div class="count-badge"><strong id="total-count">0</strong> cards registered</div>
+      <div class="toolbar-actions">
+        <input type="text" class="search-input" id="search-input" placeholder="Search UID or roll...">
+        <button class="tb-btn" id="import-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Import CSV
+        </button>
+        <button class="tb-btn export-btn" id="export-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Export CSV
+        </button>
+        <button class="tb-btn danger" id="clear-btn">Clear All</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Card UID</th>
+            <th>Roll Number</th>
+            <th>Name</th>
+            <th>Registered</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr class="empty-state-row"><td colspan="6">
+            <div class="empty-state">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="8" y1="3" x2="8" y2="9"/></svg>
+              <p>No cards registered yet. Scan a card to begin.</p>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <input type="file" id="csv-file" accept=".csv" style="display:none">
+
+<script>
+const STORAGE_KEY = 'lgu_card_registrations';
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+const uidInput = document.getElementById('uid-input');
+const rollInput = document.getElementById('roll-input');
+const nameInput = document.getElementById('name-input');
+const addBtn = document.getElementById('add-btn');
+const tableBody = document.getElementById('table-body');
+const totalCount = document.getElementById('total-count');
+const searchInput = document.getElementById('search-input');
+const dupWarn = document.getElementById('dup-warn');
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+function toast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+function renderTable(filter) {
+  const q = (filter || '').toLowerCase();
+  const filtered = q ? entries.filter(e =>
+    e.uid.toLowerCase().includes(q) || e.roll.toLowerCase().includes(q) || (e.name || '').toLowerCase().includes(q)
+  ) : entries;
+
+  totalCount.textContent = entries.length;
+
+  if (!filtered.length) {
+    tableBody.innerHTML = `<tr class="empty-state-row"><td colspan="6"><div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="8" y1="3" x2="8" y2="9"/></svg>
+      <p>${q ? 'No matches found.' : 'No cards registered yet. Scan a card to begin.'}</p>
+    </div></td></tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = filtered.map((e, i) => {
+    const idx = entries.indexOf(e) + 1;
+    const time = e.time ? new Date(e.time).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    return `<tr>
+      <td style="color:var(--muted)">${idx}</td>
+      <td class="td-uid">${esc(e.uid)}</td>
+      <td class="td-roll">${esc(e.roll)}</td>
+      <td class="td-name">${esc(e.name || '—')}</td>
+      <td class="td-time">${time}</td>
+      <td><button class="del-btn" onclick="deleteEntry(${entries.indexOf(e)})">Remove</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function checkDuplicate() {
+  const uid = uidInput.value.trim();
+  const roll = rollInput.value.trim();
+  dupWarn.style.display = 'none';
+
+  if (uid) {
+    const existing = entries.find(e => e.uid.toUpperCase() === uid.toUpperCase());
+    if (existing) {
+      dupWarn.textContent = `This card UID is already registered to ${existing.roll}`;
+      dupWarn.style.display = 'block';
+      return;
+    }
+  }
+  if (roll) {
+    const existing = entries.find(e => e.roll.toUpperCase() === roll.toUpperCase());
+    if (existing) {
+      dupWarn.textContent = `This roll number already has card UID: ${existing.uid}`;
+      dupWarn.style.display = 'block';
+    }
+  }
+}
+
+function addEntry() {
+  const uid = uidInput.value.trim();
+  const roll = rollInput.value.trim().toUpperCase();
+  const name = nameInput.value.trim();
+
+  if (!uid || !roll) {
+    toast('Card UID and Roll Number are required', true);
+    return;
+  }
+
+  const dupUid = entries.find(e => e.uid.toUpperCase() === uid.toUpperCase());
+  if (dupUid) {
+    toast(`Card UID "${uid}" already registered to ${dupUid.roll}`, true);
+    return;
+  }
+
+  const dupRoll = entries.find(e => e.roll.toUpperCase() === roll.toUpperCase());
+  if (dupRoll) {
+    toast(`Roll "${roll}" already has card UID: ${dupRoll.uid}`, true);
+    return;
+  }
+
+  entries.push({ uid: uid, roll: roll, name: name, time: new Date().toISOString() });
+  save();
+  renderTable(searchInput.value);
+  toast(`Added: ${uid} → ${roll}`);
+
+  uidInput.value = '';
+  rollInput.value = '';
+  nameInput.value = '';
+  dupWarn.style.display = 'none';
+  uidInput.focus();
+}
+
+function deleteEntry(idx) {
+  const e = entries[idx];
+  if (!confirm(`Remove ${e.uid} → ${e.roll}?`)) return;
+  entries.splice(idx, 1);
+  save();
+  renderTable(searchInput.value);
+}
+
+function exportCSV() {
+  if (!entries.length) { toast('Nothing to export', true); return; }
+  let csv = 'Card UID,Roll Number,Student Name,Registered At\n';
+  entries.forEach(e => {
+    csv += `"${e.uid}","${e.roll}","${e.name || ''}","${e.time || ''}"\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lgu_card_mapping_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Exported ${entries.length} entries`);
+}
+
+function importCSV(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    let added = 0, skipped = 0;
+    lines.forEach((line, i) => {
+      if (i === 0 && line.toLowerCase().includes('uid')) return;
+      const parts = line.match(/(".*?"|[^,]+)/g);
+      if (!parts || parts.length < 2) return;
+      const uid = parts[0].replace(/"/g, '').trim();
+      const roll = parts[1].replace(/"/g, '').trim().toUpperCase();
+      const name = parts[2] ? parts[2].replace(/"/g, '').trim() : '';
+      if (!uid || !roll) return;
+      if (entries.find(e => e.uid.toUpperCase() === uid.toUpperCase())) { skipped++; return; }
+      entries.push({ uid, roll, name, time: new Date().toISOString() });
+      added++;
+    });
+    save();
+    renderTable(searchInput.value);
+    toast(`Imported ${added} entries${skipped ? `, ${skipped} duplicates skipped` : ''}`);
+  };
+  reader.readAsText(file);
+}
+
+// Events
+addBtn.addEventListener('click', addEntry);
+uidInput.addEventListener('input', checkDuplicate);
+rollInput.addEventListener('input', checkDuplicate);
+
+uidInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    rollInput.focus();
+  }
+});
+rollInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (nameInput.value.trim() || !rollInput.value.trim()) addEntry();
+    else nameInput.focus();
+  }
+});
+nameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addEntry(); }
+});
+
+searchInput.addEventListener('input', () => renderTable(searchInput.value));
+
+document.getElementById('export-btn').addEventListener('click', exportCSV);
+document.getElementById('import-btn').addEventListener('click', () => document.getElementById('csv-file').click());
+document.getElementById('csv-file').addEventListener('change', (e) => {
+  if (e.target.files[0]) importCSV(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('clear-btn').addEventListener('click', () => {
+  if (!entries.length) return;
+  if (!confirm(`Delete all ${entries.length} entries? This cannot be undone.`)) return;
+  entries = [];
+  save();
+  renderTable();
+  toast('All entries cleared');
+});
+
+renderTable();
+</script>
+</body>
+</html>
