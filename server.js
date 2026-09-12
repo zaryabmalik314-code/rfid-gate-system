@@ -1135,7 +1135,7 @@ app.get('/api/register/search', requireTeam, (req, res) => {
   })));
 });
 
-app.post('/api/register/assign', requireTeam, (req, res) => {
+app.post('/api/register/assign', requireTeam, async (req, res) => {
   const { roll_number, card_uid } = req.body;
   if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
   const wb = loadExcel();
@@ -1159,7 +1159,34 @@ app.post('/api/register/assign', requireTeam, (req, res) => {
   wb.Sheets[wb.SheetNames[0]] = newWs;
   XLSX.writeFile(wb, REGISTER_EXCEL);
 
-  res.json({ success: true, student: { roll: rows[idx].StdRollNo, name: rows[idx].studentname, cardUid: uid } });
+  const student = rows[idx];
+  const name = student.studentname || '';
+  const roll = student.StdRollNo || '';
+  const dept = student.DegreeID || 'Unknown';
+  const gender = student.Gender || '';
+  const phone = student.PhoneMobilePrimary || '';
+  const cnic = student.CNIC || '';
+  const father = student.FatherName || '';
+  const session = student.JoiningSession || '';
+  const enrollYear = session ? parseInt(session.split('-')[0]) || null : null;
+  const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
+
+  try {
+    const existing = await queryOne('SELECT id FROM students WHERE roll_number = $1', [roll]);
+    if (existing) {
+      await run('UPDATE students SET card_uid = $1 WHERE id = $2', [uid, existing.id]);
+    } else {
+      await run(
+        `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, father_name, cnic, phone, gender)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [uid, name, roll, dept, 1, 'A', 'active', photoUrl, enrollYear, father, cnic, phone, gender]
+      );
+    }
+  } catch (dbErr) {
+    console.error('DB sync after card assign:', dbErr.message);
+  }
+
+  res.json({ success: true, student: { roll, name, cardUid: uid } });
 });
 
 app.post('/api/register/unassign', requireAdmin, (req, res) => {
