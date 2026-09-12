@@ -1078,6 +1078,127 @@ function scheduleNightlyReset() {
   }, ms);
 }
 
+// --- CARD REGISTRATION (Excel-based) ---
+const REGISTER_EXCEL = path.join(__dirname, 'data', 'enrolled_students.xlsx');
+
+function loadExcel() {
+  if (!fs.existsSync(REGISTER_EXCEL)) return null;
+  const wb = XLSX.readFile(REGISTER_EXCEL);
+  return wb;
+}
+
+function findStudentRow(wb, rollQuery) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const q = rollQuery.trim().toUpperCase();
+  return rows.find(r => {
+    const roll = String(r.StdRollNo || '').toUpperCase();
+    return roll === q || roll.includes(q);
+  });
+}
+
+function getExcelStats(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const total = rows.length;
+  const mapped = rows.filter(r => r.CardUID && String(r.CardUID).trim()).length;
+  return { total, mapped, remaining: total - mapped };
+}
+
+app.get('/api/register/stats', requireAuth, (req, res) => {
+  const wb = loadExcel();
+  if (!wb) return res.status(404).json({ error: 'Excel file not found. Upload it first.' });
+  res.json(getExcelStats(wb));
+});
+
+app.get('/api/register/search', requireAuth, (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: 'Query required' });
+  const wb = loadExcel();
+  if (!wb) return res.status(404).json({ error: 'Excel file not found' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const query = q.trim().toUpperCase();
+  const matches = rows.filter(r => {
+    const roll = String(r.StdRollNo || '').toUpperCase();
+    const name = String(r.studentname || '').toUpperCase();
+    return roll.includes(query) || name.includes(query);
+  }).slice(0, 10);
+  res.json(matches.map(r => ({
+    roll: r.StdRollNo,
+    name: r.studentname,
+    father: r.FatherName,
+    degree: r.DegreeID,
+    session: r.JoiningSession,
+    gender: r.Gender,
+    cardUid: r.CardUID || null
+  })));
+});
+
+app.post('/api/register/assign', requireAuth, (req, res) => {
+  const { roll_number, card_uid } = req.body;
+  if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
+  const wb = loadExcel();
+  if (!wb) return res.status(404).json({ error: 'Excel file not found' });
+
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const q = roll_number.trim().toUpperCase();
+  const uid = card_uid.trim().toUpperCase();
+
+  const dupUid = rows.find(r => String(r.CardUID || '').toUpperCase() === uid);
+  if (dupUid) return res.status(409).json({ error: `Card UID already assigned to ${dupUid.StdRollNo} (${dupUid.studentname})` });
+
+  const idx = rows.findIndex(r => String(r.StdRollNo || '').toUpperCase() === q);
+  if (idx === -1) return res.status(404).json({ error: 'Roll number not found in Excel' });
+
+  rows[idx].CardUID = uid;
+  const newWs = XLSX.utils.json_to_sheet(rows);
+  wb.Sheets[wb.SheetNames[0]] = newWs;
+  XLSX.writeFile(wb, REGISTER_EXCEL);
+
+  res.json({ success: true, student: { roll: rows[idx].StdRollNo, name: rows[idx].studentname, cardUid: uid } });
+});
+
+app.post('/api/register/unassign', requireAuth, (req, res) => {
+  const { roll_number } = req.body;
+  if (!roll_number) return res.status(400).json({ error: 'roll_number required' });
+  const wb = loadExcel();
+  if (!wb) return res.status(404).json({ error: 'Excel file not found' });
+
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const q = roll_number.trim().toUpperCase();
+  const idx = rows.findIndex(r => String(r.StdRollNo || '').toUpperCase() === q);
+  if (idx === -1) return res.status(404).json({ error: 'Roll number not found' });
+
+  rows[idx].CardUID = '';
+  const newWs = XLSX.utils.json_to_sheet(rows);
+  wb.Sheets[wb.SheetNames[0]] = newWs;
+  XLSX.writeFile(wb, REGISTER_EXCEL);
+
+  res.json({ success: true });
+});
+
+app.get('/api/register/recent', requireAuth, (req, res) => {
+  const wb = loadExcel();
+  if (!wb) return res.status(404).json({ error: 'Excel file not found' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const mapped = rows.filter(r => r.CardUID && String(r.CardUID).trim())
+    .map(r => ({ roll: r.StdRollNo, name: r.studentname, degree: r.DegreeID, cardUid: r.CardUID }));
+  res.json(mapped);
+});
+
+app.post('/api/register/upload', requireAuth, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const dataDir = path.join(__dirname, 'data');
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  fs.renameSync(req.file.path, REGISTER_EXCEL);
+  const wb = loadExcel();
+  res.json({ success: true, stats: getExcelStats(wb) });
+});
+
 // --- INIT DB & START ---
 async function start() {
   await pool.query(`
