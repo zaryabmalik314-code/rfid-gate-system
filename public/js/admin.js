@@ -1152,6 +1152,10 @@ async function uploadRegExcel() {
   }
 }
 
+function downloadRegExcel() {
+  window.open('/api/register/download?token=' + getToken(), '_blank');
+}
+
 async function loadRegExcelStats() {
   try {
     const res = await fetch('/api/register/stats');

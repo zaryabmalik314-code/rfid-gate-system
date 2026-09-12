@@ -1220,6 +1220,14 @@ app.get('/api/register/recent', requireTeam, (req, res) => {
   res.json(mapped);
 });
 
+app.get('/api/register/download', (req, res) => {
+  const token = req.query.token || (req.headers.authorization || '').slice(7);
+  const session = adminSessions.get(token);
+  if (!session || session.expires < Date.now()) return res.status(401).json({ error: 'Admin login required' });
+  if (!fs.existsSync(REGISTER_EXCEL)) return res.status(404).json({ error: 'No Excel file found' });
+  res.download(REGISTER_EXCEL, 'enrolled_students_mapped.xlsx');
+});
+
 app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const dataDir = path.join(__dirname, 'data');
