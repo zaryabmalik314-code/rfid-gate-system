@@ -148,12 +148,18 @@
       </div>
     </header>
 
-    <!-- Error state if no Excel -->
+    <!-- Upload state if no Excel -->
     <div id="error-state" class="hidden">
       <div class="error-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <h2>Not Ready Yet</h2>
-        <p>Student data hasn't been loaded. Contact Zaryab to set it up.</p>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+        <h2>Upload Student Data</h2>
+        <p style="margin-bottom:16px">Admin login required to upload the Excel file</p>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;max-width:300px;margin:0 auto">
+          <input type="password" id="admin-pass" placeholder="Admin password" autocomplete="off" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:14px;outline:none;text-align:center">
+          <button id="upload-btn" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Choose Excel File</button>
+          <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none">
+          <div id="upload-status" style="font-size:12px;color:var(--muted)"></div>
+        </div>
       </div>
     </div>
 
@@ -405,6 +411,53 @@ async function loadRecent() {
     ).join('');
   } catch (e) {}
 }
+
+// Upload flow
+document.getElementById('upload-btn').addEventListener('click', () => {
+  const pass = document.getElementById('admin-pass').value;
+  if (!pass) { document.getElementById('upload-status').textContent = 'Enter admin password first'; return; }
+  document.getElementById('excel-file').click();
+});
+
+document.getElementById('excel-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const pass = document.getElementById('admin-pass').value;
+  const status = document.getElementById('upload-status');
+  status.textContent = 'Logging in...';
+
+  try {
+    const loginRes = await fetch('/api/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const loginData = await loginRes.json();
+    if (!loginData.token) { status.textContent = 'Wrong password'; status.style.color = 'var(--red)'; return; }
+
+    status.textContent = 'Uploading ' + file.name + '...';
+    status.style.color = 'var(--muted)';
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/register/upload', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + loginData.token }, body: fd
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('Loaded ' + data.stats.total + ' students!');
+      document.getElementById('error-state').classList.add('hidden');
+      document.getElementById('work-area').classList.remove('hidden');
+      updateStats(data.stats);
+      loadRecent();
+    } else {
+      status.textContent = data.error || 'Upload failed';
+      status.style.color = 'var(--red)';
+    }
+  } catch (err) {
+    status.textContent = 'Connection error';
+    status.style.color = 'var(--red)';
+  }
+  e.target.value = '';
+});
 
 init();
 setInterval(refreshStats, 15000);
