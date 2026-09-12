@@ -147,26 +147,11 @@
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     .toast.error { background: var(--red); color: #fff; }
 
-    /* Upload overlay */
-    .upload-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      display: flex; align-items: center; justify-content: center; z-index: 90;
+    .no-excel-msg {
+      text-align: center; padding: 60px 20px; color: var(--muted);
     }
-    .upload-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 32px; text-align: center; max-width: 380px;
-    }
-    .upload-card h3 { margin-bottom: 8px; }
-    .upload-card p { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
-    .upload-card input[type=password] {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px; color: var(--text); font-size: 14px; outline: none; margin-bottom: 10px;
-    }
-    .upload-card button {
-      width: 100%; background: var(--accent); color: #fff; border: none;
-      border-radius: 8px; padding: 12px; font-weight: 700; cursor: pointer;
-    }
-    .upload-status { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .no-excel-msg h3 { color: var(--orange); margin-bottom: 8px; font-size: 18px; }
+    .no-excel-msg p { font-size: 13px; }
 
     @media (max-width: 600px) {
       .stats-row { grid-template-columns: 1fr 1fr; }
@@ -189,18 +174,6 @@
       <button class="login-btn" id="login-btn">Login</button>
       <div class="login-error hidden" id="login-error"></div>
       <div class="login-hint">Don't have an account? Ask admin to create one for you.</div>
-    </div>
-  </div>
-
-  <!-- UPLOAD OVERLAY (admin only, when no Excel) -->
-  <div id="upload-overlay" class="upload-overlay hidden">
-    <div class="upload-card">
-      <h3>Upload Student Data</h3>
-      <p>Admin password required to upload the Excel file</p>
-      <input type="password" id="admin-pass" placeholder="Admin password">
-      <button id="upload-btn">Choose Excel File</button>
-      <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none">
-      <div class="upload-status" id="upload-status"></div>
     </div>
   </div>
 
@@ -363,7 +336,7 @@ async function showApp() {
 
   const res = await fetch('/api/register/stats');
   if (res.status === 404) {
-    document.getElementById('upload-overlay').classList.remove('hidden');
+    document.querySelector('.layout').innerHTML = '<div class="no-excel-msg"><h3>No Student Data Loaded</h3><p>Ask your admin to upload the Excel file from the Admin Panel.</p></div>';
     return;
   }
   const stats = await res.json();
@@ -389,44 +362,6 @@ async function refreshStats() {
     if (res.ok) { updateStats(await res.json()); loadRecent(); }
   } catch (e) {}
 }
-
-// --- UPLOAD ---
-document.getElementById('upload-btn').addEventListener('click', () => {
-  if (!document.getElementById('admin-pass').value) { document.getElementById('upload-status').textContent = 'Enter admin password'; return; }
-  document.getElementById('excel-file').click();
-});
-
-document.getElementById('excel-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const pass = document.getElementById('admin-pass').value;
-  const status = document.getElementById('upload-status');
-  status.textContent = 'Logging in...';
-
-  try {
-    const loginRes = await fetch('/api/admin/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pass })
-    });
-    const loginData = await loginRes.json();
-    if (!loginData.token) { status.textContent = 'Wrong admin password'; return; }
-
-    status.textContent = 'Uploading...';
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch('/api/register/upload', {
-      method: 'POST', headers: { 'Authorization': 'Bearer ' + loginData.token }, body: fd
-    });
-    const data = await res.json();
-    if (data.success) {
-      toast('Loaded ' + data.stats.total + ' students');
-      document.getElementById('upload-overlay').classList.add('hidden');
-      updateStats(data.stats);
-      loadRecent();
-    } else { status.textContent = data.error || 'Failed'; }
-  } catch (err) { status.textContent = 'Connection error'; }
-  e.target.value = '';
-});
 
 // --- SCAN FLOW ---
 const uidInput = document.getElementById('uid-input');

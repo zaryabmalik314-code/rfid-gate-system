@@ -90,7 +90,7 @@ function switchTab(tab) {
   if (tab === 'alerts') { initLiveWS(); resetAlertBadge(); loadAlertsFromDB(); }
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
-  if (tab === 'team') loadTeamMembers();
+  if (tab === 'team') { loadTeamMembers(); loadRegExcelStats(); }
   if (tab === 'analytics') loadAnalytics();
 }
 
@@ -1126,4 +1126,38 @@ async function deleteTeamMember(id, name) {
   if (!confirm(`Remove team member "${name}"?`)) return;
   await authFetch(`/api/team/${id}`, { method: 'DELETE' });
   loadTeamMembers();
+}
+
+async function uploadRegExcel() {
+  const file = document.getElementById('reg-excel-file').files[0];
+  const result = document.getElementById('reg-upload-result');
+  if (!file) { result.className = 'import-result error'; result.textContent = 'Select an Excel file first'; return; }
+  result.className = 'import-result'; result.textContent = 'Uploading...';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await authFetch('/api/register/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) {
+      result.className = 'import-result success';
+      result.textContent = `Loaded ${data.stats.total} students (${data.stats.mapped} already mapped)`;
+      loadRegExcelStats();
+    } else {
+      result.className = 'import-result error';
+      result.textContent = data.error || 'Upload failed';
+    }
+  } catch (e) {
+    result.className = 'import-result error';
+    result.textContent = 'Connection error';
+  }
+}
+
+async function loadRegExcelStats() {
+  try {
+    const res = await fetch('/api/register/stats');
+    const el = document.getElementById('reg-excel-stats');
+    if (res.status === 404) { el.textContent = 'No Excel file uploaded yet'; return; }
+    const s = await res.json();
+    el.innerHTML = `Current file: <strong>${s.total}</strong> students, <strong style="color:var(--green)">${s.mapped}</strong> mapped, <strong style="color:var(--orange)">${s.remaining}</strong> remaining`;
+  } catch (e) {}
 }
