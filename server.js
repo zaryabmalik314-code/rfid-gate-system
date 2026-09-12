@@ -1105,13 +1105,13 @@ function getExcelStats(wb) {
   return { total, mapped, remaining: total - mapped };
 }
 
-app.get('/api/register/stats', requireAuth, (req, res) => {
+app.get('/api/register/stats', requireAdmin, (req, res) => {
   const wb = loadExcel();
   if (!wb) return res.status(404).json({ error: 'Excel file not found. Upload it first.' });
   res.json(getExcelStats(wb));
 });
 
-app.get('/api/register/search', requireAuth, (req, res) => {
+app.get('/api/register/search', requireAdmin, (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
   const wb = loadExcel();
@@ -1135,7 +1135,7 @@ app.get('/api/register/search', requireAuth, (req, res) => {
   })));
 });
 
-app.post('/api/register/assign', requireAuth, (req, res) => {
+app.post('/api/register/assign', requireAdmin, (req, res) => {
   const { roll_number, card_uid } = req.body;
   if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
   const wb = loadExcel();
@@ -1160,7 +1160,7 @@ app.post('/api/register/assign', requireAuth, (req, res) => {
   res.json({ success: true, student: { roll: rows[idx].StdRollNo, name: rows[idx].studentname, cardUid: uid } });
 });
 
-app.post('/api/register/unassign', requireAuth, (req, res) => {
+app.post('/api/register/unassign', requireAdmin, (req, res) => {
   const { roll_number } = req.body;
   if (!roll_number) return res.status(400).json({ error: 'roll_number required' });
   const wb = loadExcel();
@@ -1180,7 +1180,7 @@ app.post('/api/register/unassign', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/register/recent', requireAuth, (req, res) => {
+app.get('/api/register/recent', requireAdmin, (req, res) => {
   const wb = loadExcel();
   if (!wb) return res.status(404).json({ error: 'Excel file not found' });
   const ws = wb.Sheets[wb.SheetNames[0]];
@@ -1190,7 +1190,7 @@ app.get('/api/register/recent', requireAuth, (req, res) => {
   res.json(mapped);
 });
 
-app.post('/api/register/upload', requireAuth, upload.single('file'), (req, res) => {
+app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const dataDir = path.join(__dirname, 'data');
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
