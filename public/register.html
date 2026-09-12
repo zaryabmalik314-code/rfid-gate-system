@@ -12,16 +12,54 @@
       --accent: #3b82f6; --green: #22c55e; --red: #ef4444; --orange: #f59e0b;
     }
     body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
-    .layout { max-width: 860px; margin: 0 auto; padding: 20px; }
+    .hidden { display: none !important; }
 
+    /* Login */
+    .login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 40px 36px; text-align: center;
+      width: 100%; max-width: 360px;
+    }
+    .login-card img { width: 56px; height: 56px; background: #fff; border-radius: 50%; padding: 3px; margin-bottom: 14px; }
+    .login-card h2 { font-size: 18px; margin-bottom: 4px; }
+    .login-card .sub { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+    .login-field {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 13px 16px; color: var(--text); font-size: 14px;
+      outline: none; margin-bottom: 10px; font-family: inherit;
+    }
+    .login-field:focus { border-color: var(--accent); }
+    .login-btn {
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      border-radius: 8px; padding: 13px; font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-top: 6px;
+    }
+    .login-btn:hover { opacity: 0.85; }
+    .login-error { color: var(--red); font-size: 12px; margin-top: 10px; }
+    .login-hint { font-size: 11px; color: var(--muted); margin-top: 16px; line-height: 1.5; }
+
+    /* Layout */
+    .layout { max-width: 860px; margin: 0 auto; padding: 20px; }
     header {
-      display: flex; align-items: center; gap: 10px;
+      display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 20px; padding-bottom: 14px;
       border-bottom: 2px solid rgba(59,130,246,0.15);
     }
-    header img { width: 36px; height: 36px; background: #fff; border-radius: 50%; padding: 2px; }
+    .h-left { display: flex; align-items: center; gap: 10px; }
+    .h-left img { width: 36px; height: 36px; background: #fff; border-radius: 50%; padding: 2px; }
     .h-title { font-size: 15px; font-weight: 700; }
     .h-sub { font-size: 11px; color: var(--muted); }
+    .h-right { display: flex; align-items: center; gap: 10px; }
+    .h-user { font-size: 12px; color: var(--accent); font-weight: 600; }
+    .logout-btn {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); font-size: 11px; padding: 5px 10px; cursor: pointer;
+    }
+    .logout-btn:hover { color: var(--red); border-color: var(--red); }
 
     /* Stats */
     .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
@@ -35,7 +73,6 @@
     .orange { color: var(--orange); }
     .accent { color: var(--accent); }
 
-    /* Progress */
     .progress-wrap { margin-bottom: 18px; }
     .progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
     .progress-fill { height: 100%; background: var(--green); border-radius: 4px; transition: width 0.5s; }
@@ -59,7 +96,6 @@
     .scan-hint { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
     .scan-hint strong { color: var(--text); }
 
-    /* Match preview */
     .match-box {
       margin-top: 14px; border-radius: 10px; padding: 16px;
       display: none; border: 1px solid var(--border); background: var(--surface2);
@@ -68,7 +104,6 @@
     .match-box.found { border-color: var(--green); }
     .match-box.not-found { border-color: var(--red); background: rgba(239,68,68,0.06); }
     .match-box.already { border-color: var(--orange); background: rgba(245,158,11,0.06); }
-
     .match-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .match-info h3 { font-size: 16px; font-weight: 700; }
     .match-info p { font-size: 12px; color: var(--muted); margin-top: 2px; }
@@ -78,22 +113,15 @@
     }
     .tag-ok { background: rgba(34,197,94,0.15); color: var(--green); }
     .tag-taken { background: rgba(245,158,11,0.15); color: var(--orange); }
-    .tag-blocked { background: rgba(239,68,68,0.15); color: var(--red); }
-
     .assign-btn {
       background: var(--green); color: #000; border: none; border-radius: 8px;
       padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
     }
     .assign-btn:hover { opacity: 0.85; }
     .assign-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
     .no-match-text { font-size: 14px; font-weight: 600; color: var(--red); }
 
-    /* Table */
-    .section-title {
-      font-size: 12px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px;
-    }
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; }
     .table-wrap {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 10px; overflow: hidden;
@@ -110,7 +138,6 @@
     .td-roll { font-weight: 600; }
     .empty-msg { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
 
-    /* Toast */
     .toast {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px);
       background: var(--green); color: #000; padding: 12px 24px;
@@ -120,15 +147,26 @@
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     .toast.error { background: var(--red); color: #fff; }
 
-    /* Error state */
-    .error-state {
-      text-align: center; padding: 60px 20px;
+    /* Upload overlay */
+    .upload-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center; z-index: 90;
     }
-    .error-state svg { margin-bottom: 16px; opacity: 0.4; }
-    .error-state h2 { font-size: 18px; margin-bottom: 8px; }
-    .error-state p { color: var(--muted); font-size: 13px; }
-
-    .hidden { display: none !important; }
+    .upload-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 32px; text-align: center; max-width: 380px;
+    }
+    .upload-card h3 { margin-bottom: 8px; }
+    .upload-card p { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+    .upload-card input[type=password] {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; color: var(--text); font-size: 14px; outline: none; margin-bottom: 10px;
+    }
+    .upload-card button {
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      border-radius: 8px; padding: 12px; font-weight: 700; cursor: pointer;
+    }
+    .upload-status { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
     @media (max-width: 600px) {
       .stats-row { grid-template-columns: 1fr 1fr; }
@@ -139,32 +177,50 @@
   </style>
 </head>
 <body>
-  <div class="layout">
-    <header>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
       <img src="images/lgu-logo.png" alt="LGU">
-      <div>
-        <div class="h-title">Card Registration</div>
-        <div class="h-sub">Lahore Garrison University — RFID Card Mapping</div>
-      </div>
-    </header>
-
-    <!-- Upload state if no Excel -->
-    <div id="error-state" class="hidden">
-      <div class="error-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-        <h2>Upload Student Data</h2>
-        <p style="margin-bottom:16px">Admin login required to upload the Excel file</p>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;max-width:300px;margin:0 auto">
-          <input type="password" id="admin-pass" placeholder="Admin password" autocomplete="off" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:14px;outline:none;text-align:center">
-          <button id="upload-btn" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Choose Excel File</button>
-          <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none">
-          <div id="upload-status" style="font-size:12px;color:var(--muted)"></div>
-        </div>
-      </div>
+      <h2>Card Registration</h2>
+      <div class="sub">Login with your team credentials</div>
+      <input type="text" class="login-field" id="login-name" placeholder="Your name" autocomplete="off">
+      <input type="password" class="login-field" id="login-pin" placeholder="PIN code">
+      <button class="login-btn" id="login-btn">Login</button>
+      <div class="login-error hidden" id="login-error"></div>
+      <div class="login-hint">Don't have an account? Ask admin to create one for you.</div>
     </div>
+  </div>
 
-    <!-- Main work area -->
-    <div id="work-area" class="hidden">
+  <!-- UPLOAD OVERLAY (admin only, when no Excel) -->
+  <div id="upload-overlay" class="upload-overlay hidden">
+    <div class="upload-card">
+      <h3>Upload Student Data</h3>
+      <p>Admin password required to upload the Excel file</p>
+      <input type="password" id="admin-pass" placeholder="Admin password">
+      <button id="upload-btn">Choose Excel File</button>
+      <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none">
+      <div class="upload-status" id="upload-status"></div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="main-app" class="hidden">
+    <div class="layout">
+      <header>
+        <div class="h-left">
+          <img src="images/lgu-logo.png" alt="LGU">
+          <div>
+            <div class="h-title">Card Registration</div>
+            <div class="h-sub">Lahore Garrison University — RFID Mapping</div>
+          </div>
+        </div>
+        <div class="h-right">
+          <div class="h-user" id="user-name"></div>
+          <button class="logout-btn" id="logout-btn">Logout</button>
+        </div>
+      </header>
+
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-val accent" id="s-total">0</div>
@@ -193,11 +249,11 @@
       </div>
 
       <div class="scan-box">
-        <div class="scan-title">Step 1: Scan Card &nbsp;&nbsp;→&nbsp;&nbsp; Step 2: Type Roll Number</div>
+        <div class="scan-title">Step 1: Scan Card → Step 2: Type Roll Number</div>
         <div class="scan-row">
           <div class="field" style="flex:1">
             <label>Card UID</label>
-            <input type="text" id="uid-input" class="uid-input" placeholder="Tap card..." autocomplete="off" autofocus>
+            <input type="text" id="uid-input" class="uid-input" placeholder="Tap card..." autocomplete="off">
           </div>
           <div class="field" style="flex:1.5">
             <label>Roll Number</label>
@@ -205,11 +261,10 @@
           </div>
         </div>
         <div class="scan-hint">
-          <strong>1.</strong> Student taps card → UID fills in automatically &nbsp;
-          <strong>2.</strong> Type their roll number and press <strong>Enter</strong> &nbsp;
-          <strong>3.</strong> Verify name and click <strong>ASSIGN</strong>
+          <strong>1.</strong> Student taps card → UID fills in &nbsp;
+          <strong>2.</strong> Type roll number, press <strong>Enter</strong> &nbsp;
+          <strong>3.</strong> Verify name, click <strong>ASSIGN</strong>
         </div>
-
         <div class="match-box" id="match-box">
           <div class="match-row">
             <div class="match-info" id="match-info"></div>
@@ -223,7 +278,7 @@
         <table>
           <thead><tr><th>#</th><th>Card UID</th><th>Roll Number</th><th>Name</th><th>Degree</th></tr></thead>
           <tbody id="table-body">
-            <tr><td colspan="5" class="empty-msg">No cards mapped yet. Start scanning!</td></tr>
+            <tr><td colspan="5" class="empty-msg">No cards mapped yet</td></tr>
           </tbody>
         </table>
       </div>
@@ -233,7 +288,21 @@
   <div class="toast" id="toast"></div>
 
 <script>
+let token = sessionStorage.getItem('team_token');
+let userName = sessionStorage.getItem('team_name');
 let currentMatch = null;
+
+function teamHeaders() {
+  return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+async function teamFetch(url, opts = {}) {
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(url, opts);
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  return res;
+}
 
 function toast(msg, err) {
   const t = document.getElementById('toast');
@@ -244,20 +313,63 @@ function toast(msg, err) {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-async function init() {
+// --- LOGIN ---
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-pin').focus(); });
+document.getElementById('login-pin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+async function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const pin = document.getElementById('login-pin').value.trim();
+  const errEl = document.getElementById('login-error');
+  if (!name || !pin) { errEl.textContent = 'Enter name and PIN'; errEl.classList.remove('hidden'); return; }
+
   try {
-    const res = await fetch('/api/register/stats');
-    if (res.status === 404) {
-      document.getElementById('error-state').classList.remove('hidden');
-      return;
+    const res = await fetch('/api/team/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, pin })
+    });
+    const data = await res.json();
+    if (data.token) {
+      token = data.token;
+      userName = data.name;
+      sessionStorage.setItem('team_token', token);
+      sessionStorage.setItem('team_name', userName);
+      showApp();
+    } else {
+      errEl.textContent = data.error || 'Login failed';
+      errEl.classList.remove('hidden');
     }
-    const stats = await res.json();
-    document.getElementById('work-area').classList.remove('hidden');
-    updateStats(stats);
-    loadRecent();
   } catch (e) {
-    document.getElementById('error-state').classList.remove('hidden');
+    errEl.textContent = 'Connection error';
+    errEl.classList.remove('hidden');
   }
+}
+
+function logout() {
+  token = null; userName = null;
+  sessionStorage.removeItem('team_token');
+  sessionStorage.removeItem('team_name');
+  document.getElementById('main-app').classList.add('hidden');
+  document.getElementById('login-screen').style.display = '';
+}
+
+document.getElementById('logout-btn').addEventListener('click', logout);
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').classList.remove('hidden');
+  document.getElementById('user-name').textContent = userName;
+
+  const res = await fetch('/api/register/stats');
+  if (res.status === 404) {
+    document.getElementById('upload-overlay').classList.remove('hidden');
+    return;
+  }
+  const stats = await res.json();
+  updateStats(stats);
+  loadRecent();
+  document.getElementById('uid-input').focus();
 }
 
 function updateStats(stats) {
@@ -272,22 +384,58 @@ function updateStats(stats) {
 }
 
 async function refreshStats() {
-  const res = await fetch('/api/register/stats');
-  const stats = await res.json();
-  updateStats(stats);
-  loadRecent();
+  try {
+    const res = await fetch('/api/register/stats');
+    if (res.ok) { updateStats(await res.json()); loadRecent(); }
+  } catch (e) {}
 }
 
-// Scan flow
+// --- UPLOAD ---
+document.getElementById('upload-btn').addEventListener('click', () => {
+  if (!document.getElementById('admin-pass').value) { document.getElementById('upload-status').textContent = 'Enter admin password'; return; }
+  document.getElementById('excel-file').click();
+});
+
+document.getElementById('excel-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const pass = document.getElementById('admin-pass').value;
+  const status = document.getElementById('upload-status');
+  status.textContent = 'Logging in...';
+
+  try {
+    const loginRes = await fetch('/api/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const loginData = await loginRes.json();
+    if (!loginData.token) { status.textContent = 'Wrong admin password'; return; }
+
+    status.textContent = 'Uploading...';
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/register/upload', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + loginData.token }, body: fd
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('Loaded ' + data.stats.total + ' students');
+      document.getElementById('upload-overlay').classList.add('hidden');
+      updateStats(data.stats);
+      loadRecent();
+    } else { status.textContent = data.error || 'Failed'; }
+  } catch (err) { status.textContent = 'Connection error'; }
+  e.target.value = '';
+});
+
+// --- SCAN FLOW ---
 const uidInput = document.getElementById('uid-input');
 const rollInput = document.getElementById('roll-input');
 const matchBox = document.getElementById('match-box');
 const matchInfo = document.getElementById('match-info');
 const assignBtn = document.getElementById('assign-btn');
 
-uidInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); rollInput.focus(); }
-});
+uidInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); rollInput.focus(); } });
 
 let searchTimeout;
 rollInput.addEventListener('input', () => {
@@ -305,23 +453,19 @@ rollInput.addEventListener('keydown', e => {
 });
 
 async function searchRoll(q) {
-  const res = await fetch('/api/register/search?q=' + encodeURIComponent(q));
+  const res = await teamFetch('/api/register/search?q=' + encodeURIComponent(q));
   const matches = await res.json();
-
   if (!matches.length) {
     matchBox.className = 'match-box show not-found';
-    matchInfo.innerHTML = '<div class="no-match-text">No student found matching "' + esc(q) + '"</div><p style="color:var(--muted);font-size:12px;margin-top:4px">Check the roll number format and try again</p>';
+    matchInfo.innerHTML = '<div class="no-match-text">No student found for "' + esc(q) + '"</div><p style="color:var(--muted);font-size:12px;margin-top:4px">Check the roll number and try again</p>';
     assignBtn.style.display = 'none';
     currentMatch = null;
     return;
   }
-
   const m = matches[0];
   currentMatch = m;
-
   let html = '<h3>' + esc(m.name) + '</h3>';
   html += '<p>' + esc(m.roll) + ' &bull; ' + esc(m.degree) + ' &bull; ' + esc(m.session) + ' &bull; ' + esc(m.gender) + '</p>';
-
   if (m.cardUid) {
     matchBox.className = 'match-box show already';
     html += '<span class="tag tag-taken">Already mapped — Card ' + esc(m.cardUid) + '</span>';
@@ -330,26 +474,16 @@ async function searchRoll(q) {
     matchBox.className = 'match-box show found';
     html += '<span class="tag tag-ok">Ready to assign</span>';
     assignBtn.style.display = '';
-    if (!uidInput.value.trim()) {
-      assignBtn.disabled = true;
-      assignBtn.textContent = 'SCAN CARD FIRST';
-    } else {
-      assignBtn.disabled = false;
-      assignBtn.textContent = 'ASSIGN CARD';
-    }
+    assignBtn.disabled = !uidInput.value.trim();
+    assignBtn.textContent = uidInput.value.trim() ? 'ASSIGN CARD' : 'SCAN CARD FIRST';
   }
   matchInfo.innerHTML = html;
 }
 
 uidInput.addEventListener('input', () => {
   if (currentMatch && !currentMatch.cardUid) {
-    if (uidInput.value.trim()) {
-      assignBtn.disabled = false;
-      assignBtn.textContent = 'ASSIGN CARD';
-    } else {
-      assignBtn.disabled = true;
-      assignBtn.textContent = 'SCAN CARD FIRST';
-    }
+    assignBtn.disabled = !uidInput.value.trim();
+    assignBtn.textContent = uidInput.value.trim() ? 'ASSIGN CARD' : 'SCAN CARD FIRST';
   }
 });
 
@@ -359,14 +493,11 @@ async function assignCard() {
   const uid = uidInput.value.trim();
   const roll = currentMatch?.roll;
   if (!uid || !roll) return;
-
   assignBtn.disabled = true;
   assignBtn.textContent = 'SAVING...';
-
   try {
-    const res = await fetch('/api/register/assign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await teamFetch('/api/register/assign', {
+      method: 'POST', headers: teamHeaders(),
       body: JSON.stringify({ roll_number: roll, card_uid: uid })
     });
     const data = await res.json();
@@ -379,12 +510,12 @@ async function assignCard() {
       refreshStats();
       uidInput.focus();
     } else {
-      toast(data.error || 'Failed to assign', true);
+      toast(data.error || 'Failed', true);
       assignBtn.disabled = false;
       assignBtn.textContent = 'ASSIGN CARD';
     }
   } catch (e) {
-    toast('Connection error — try again', true);
+    toast('Connection error', true);
     assignBtn.disabled = false;
     assignBtn.textContent = 'ASSIGN CARD';
   }
@@ -392,13 +523,10 @@ async function assignCard() {
 
 async function loadRecent() {
   try {
-    const res = await fetch('/api/register/recent');
+    const res = await teamFetch('/api/register/recent');
     const list = await res.json();
     const tbody = document.getElementById('table-body');
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No cards mapped yet. Start scanning!</td></tr>';
-      return;
-    }
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No cards mapped yet</td></tr>'; return; }
     const recent = list.slice(-50).reverse();
     tbody.innerHTML = recent.map((r, i) =>
       '<tr>' +
@@ -412,54 +540,8 @@ async function loadRecent() {
   } catch (e) {}
 }
 
-// Upload flow
-document.getElementById('upload-btn').addEventListener('click', () => {
-  const pass = document.getElementById('admin-pass').value;
-  if (!pass) { document.getElementById('upload-status').textContent = 'Enter admin password first'; return; }
-  document.getElementById('excel-file').click();
-});
-
-document.getElementById('excel-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const pass = document.getElementById('admin-pass').value;
-  const status = document.getElementById('upload-status');
-  status.textContent = 'Logging in...';
-
-  try {
-    const loginRes = await fetch('/api/admin/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pass })
-    });
-    const loginData = await loginRes.json();
-    if (!loginData.token) { status.textContent = 'Wrong password'; status.style.color = 'var(--red)'; return; }
-
-    status.textContent = 'Uploading ' + file.name + '...';
-    status.style.color = 'var(--muted)';
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch('/api/register/upload', {
-      method: 'POST', headers: { 'Authorization': 'Bearer ' + loginData.token }, body: fd
-    });
-    const data = await res.json();
-    if (data.success) {
-      toast('Loaded ' + data.stats.total + ' students!');
-      document.getElementById('error-state').classList.add('hidden');
-      document.getElementById('work-area').classList.remove('hidden');
-      updateStats(data.stats);
-      loadRecent();
-    } else {
-      status.textContent = data.error || 'Upload failed';
-      status.style.color = 'var(--red)';
-    }
-  } catch (err) {
-    status.textContent = 'Connection error';
-    status.style.color = 'var(--red)';
-  }
-  e.target.value = '';
-});
-
-init();
+// Init
+if (token && userName) showApp();
 setInterval(refreshStats, 15000);
 </script>
 </body>

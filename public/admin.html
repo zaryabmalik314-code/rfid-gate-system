@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LGU Gate Admin</title>
-  <link rel="stylesheet" href="css/admin.css?v=14">
+  <link rel="stylesheet" href="css/admin.css?v=15">
 </head>
 <body>
   <!-- LOGIN OVERLAY -->
@@ -71,6 +71,10 @@
       <button class="tab" onclick="switchTab('analytics')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
         Analytics
+      </button>
+      <button class="tab" onclick="switchTab('team')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Team
       </button>
       <button class="tab" onclick="switchTab('import')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -355,6 +359,52 @@
       </div>
     </div>
 
+    <!-- TEAM TAB -->
+    <div id="tab-team" class="tab-content">
+      <div class="import-section" style="border-left:3px solid var(--accent)">
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <h2>Add Team Member</h2>
+        </div>
+        <p>Create login credentials for team members who will use the Card Registration tool.</p>
+        <div class="form-row" style="gap:10px;align-items:flex-end">
+          <div class="form-group" style="flex:1;margin-bottom:0">
+            <label>Name</label>
+            <input type="text" id="team-name" placeholder="e.g. Ahmed">
+          </div>
+          <div class="form-group" style="flex:1;margin-bottom:0">
+            <label>PIN Code</label>
+            <input type="text" id="team-pin" placeholder="e.g. 1234" maxlength="8">
+          </div>
+          <button class="btn-primary" onclick="createTeamMember()" style="height:42px">Add Member</button>
+        </div>
+        <div id="team-create-result" class="import-result hidden" style="margin-top:10px"></div>
+      </div>
+
+      <div class="import-section">
+        <div class="import-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <h2>Team Members</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>PIN</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="team-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- IMPORT TAB -->
     <div id="tab-import" class="tab-content">
       <div class="import-section">
@@ -534,6 +584,6 @@
     </div>
   </div>
 
-  <script src="js/admin.js?v=14"></script>
+  <script src="js/admin.js?v=15"></script>
 </body>
 </html>

@@ -90,6 +90,7 @@ function switchTab(tab) {
   if (tab === 'alerts') { initLiveWS(); resetAlertBadge(); loadAlertsFromDB(); }
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
+  if (tab === 'team') loadTeamMembers();
   if (tab === 'analytics') loadAnalytics();
 }
 
@@ -1071,4 +1072,58 @@ async function openStudentDetail(alertData) {
 
 function closeStudentDetail() {
   document.getElementById('student-detail-overlay').classList.add('hidden');
+}
+
+// --- TEAM MANAGEMENT ---
+async function loadTeamMembers() {
+  const res = await authFetch('/api/team/list');
+  const members = await res.json();
+  const tbody = document.getElementById('team-tbody');
+  if (!members.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">No team members yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = members.map(m => {
+    const created = new Date(m.created_at).toLocaleDateString();
+    return `<tr>
+      <td><strong>${m.name}</strong></td>
+      <td style="font-family:monospace;color:var(--muted)">${m.pin}</td>
+      <td><span class="badge badge-${m.status === 'approved' ? 'allowed' : 'denied'}">${m.status}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${created}</td>
+      <td><button class="btn-small btn-delete" onclick="deleteTeamMember(${m.id}, '${m.name}')">Remove</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function createTeamMember() {
+  const name = document.getElementById('team-name').value.trim();
+  const pin = document.getElementById('team-pin').value.trim();
+  const result = document.getElementById('team-create-result');
+  if (!name || !pin) { result.className = 'import-result error'; result.textContent = 'Name and PIN required'; return; }
+  try {
+    const res = await authFetch('/api/team/create', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ name, pin })
+    });
+    const data = await res.json();
+    if (data.success) {
+      result.className = 'import-result success';
+      result.textContent = `Added ${data.member.name} (PIN: ${data.member.pin})`;
+      document.getElementById('team-name').value = '';
+      document.getElementById('team-pin').value = '';
+      loadTeamMembers();
+    } else {
+      result.className = 'import-result error';
+      result.textContent = data.error || 'Failed';
+    }
+  } catch (e) {
+    result.className = 'import-result error';
+    result.textContent = 'Connection error';
+  }
+}
+
+async function deleteTeamMember(id, name) {
+  if (!confirm(`Remove team member "${name}"?`)) return;
+  await authFetch(`/api/team/${id}`, { method: 'DELETE' });
+  loadTeamMembers();
 }

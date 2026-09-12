@@ -1111,7 +1111,7 @@ app.get('/api/register/stats', (req, res) => {
   res.json(getExcelStats(wb));
 });
 
-app.get('/api/register/search', (req, res) => {
+app.get('/api/register/search', requireTeam, (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
   const wb = loadExcel();
@@ -1135,7 +1135,7 @@ app.get('/api/register/search', (req, res) => {
   })));
 });
 
-app.post('/api/register/assign', (req, res) => {
+app.post('/api/register/assign', requireTeam, (req, res) => {
   const { roll_number, card_uid } = req.body;
   if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
   const wb = loadExcel();
@@ -1153,6 +1153,8 @@ app.post('/api/register/assign', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Roll number not found in Excel' });
 
   rows[idx].CardUID = uid;
+  rows[idx].AssignedBy = req.teamMember ? req.teamMember.name : 'admin';
+  rows[idx].AssignedAt = new Date().toISOString();
   const newWs = XLSX.utils.json_to_sheet(rows);
   wb.Sheets[wb.SheetNames[0]] = newWs;
   XLSX.writeFile(wb, REGISTER_EXCEL);
@@ -1181,7 +1183,7 @@ app.post('/api/register/unassign', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/register/recent', (req, res) => {
+app.get('/api/register/recent', requireTeam, (req, res) => {
   const wb = loadExcel();
   if (!wb) return res.status(404).json({ error: 'Excel file not found' });
   const ws = wb.Sheets[wb.SheetNames[0]];
@@ -1198,6 +1200,62 @@ app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res)
   fs.renameSync(req.file.path, REGISTER_EXCEL);
   const wb = loadExcel();
   res.json({ success: true, stats: getExcelStats(wb) });
+});
+
+// --- TEAM MEMBERS (for registration tool) ---
+const teamSessions = new Map();
+
+app.post('/api/team/login', async (req, res) => {
+  const { name, pin } = req.body;
+  if (!name || !pin) return res.status(400).json({ error: 'Name and PIN required' });
+  try {
+    const result = await pool.query(
+      'SELECT id, name, status FROM team_members WHERE LOWER(name) = LOWER($1) AND pin = $2', [name.trim(), pin.trim()]
+    );
+    if (!result.rows.length) return res.status(403).json({ error: 'Wrong name or PIN' });
+    const member = result.rows[0];
+    if (member.status !== 'approved') return res.status(403).json({ error: 'Your account is pending approval. Contact admin.' });
+    const token = generateToken();
+    teamSessions.set(token, { id: member.id, name: member.name, expires: Date.now() + 12 * 60 * 60 * 1000 });
+    res.json({ token, name: member.name });
+  } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+function requireTeam(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Login required' });
+  const token = auth.slice(7);
+  const session = teamSessions.get(token);
+  if (!session || session.expires < Date.now()) {
+    teamSessions.delete(token);
+    return res.status(401).json({ error: 'Session expired' });
+  }
+  req.teamMember = session;
+  next();
+}
+
+// Admin: create team member
+app.post('/api/team/create', requireAdmin, async (req, res) => {
+  const { name, pin } = req.body;
+  if (!name || !pin) return res.status(400).json({ error: 'Name and PIN required' });
+  try {
+    const existing = await pool.query('SELECT id FROM team_members WHERE LOWER(name) = LOWER($1)', [name.trim()]);
+    if (existing.rows.length) return res.status(409).json({ error: 'Name already exists' });
+    await pool.query('INSERT INTO team_members (name, pin, status) VALUES ($1, $2, $3)', [name.trim(), pin.trim(), 'approved']);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// Admin: list team members
+app.get('/api/team/list', requireAdmin, async (req, res) => {
+  const result = await pool.query('SELECT id, name, status, created_at FROM team_members ORDER BY created_at DESC');
+  res.json(result.rows);
+});
+
+// Admin: remove team member
+app.delete('/api/team/:id', requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM team_members WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
 });
 
 // --- INIT DB & START ---
@@ -1286,6 +1344,16 @@ async function start() {
     )
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_alert_timestamp ON alerts(timestamp)');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS team_members (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      pin TEXT NOT NULL,
+      status TEXT DEFAULT 'approved',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
   // One-time cleanup: remove seed/test students and their logs
   const seedResult = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-2024-%'");
