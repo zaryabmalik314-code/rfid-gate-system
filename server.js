@@ -1105,13 +1105,13 @@ function getExcelStats(wb) {
   return { total, mapped, remaining: total - mapped };
 }
 
-app.get('/api/register/stats', requireAdmin, (req, res) => {
+app.get('/api/register/stats', (req, res) => {
   const wb = loadExcel();
   if (!wb) return res.status(404).json({ error: 'Excel file not found. Upload it first.' });
   res.json(getExcelStats(wb));
 });
 
-app.get('/api/register/search', requireAdmin, (req, res) => {
+app.get('/api/register/search', (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
   const wb = loadExcel();
@@ -1135,7 +1135,7 @@ app.get('/api/register/search', requireAdmin, (req, res) => {
   })));
 });
 
-app.post('/api/register/assign', requireAdmin, (req, res) => {
+app.post('/api/register/assign', (req, res) => {
   const { roll_number, card_uid } = req.body;
   if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
   const wb = loadExcel();
@@ -1161,6 +1161,7 @@ app.post('/api/register/assign', requireAdmin, (req, res) => {
 });
 
 app.post('/api/register/unassign', requireAdmin, (req, res) => {
+  // Only admin can unassign
   const { roll_number } = req.body;
   if (!roll_number) return res.status(400).json({ error: 'roll_number required' });
   const wb = loadExcel();
@@ -1180,7 +1181,7 @@ app.post('/api/register/unassign', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/register/recent', requireAdmin, (req, res) => {
+app.get('/api/register/recent', (req, res) => {
   const wb = loadExcel();
   if (!wb) return res.status(404).json({ error: 'Excel file not found' });
   const ws = wb.Sheets[wb.SheetNames[0]];

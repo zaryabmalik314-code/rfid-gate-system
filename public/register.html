@@ -12,93 +12,91 @@
       --accent: #3b82f6; --green: #22c55e; --red: #ef4444; --orange: #f59e0b;
     }
     body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
-    .layout { max-width: 860px; margin: 0 auto; padding: 24px; }
+    .layout { max-width: 860px; margin: 0 auto; padding: 20px; }
 
-    /* Login */
-    #login-overlay {
-      position: fixed; inset: 0; background: var(--bg);
-      display: flex; align-items: center; justify-content: center; z-index: 100;
-    }
-    .login-box { text-align: center; }
-    .login-box img { width: 48px; margin-bottom: 12px; }
-    .login-box h2 { font-size: 18px; margin-bottom: 4px; }
-    .login-box p { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
-    .login-box input {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-      padding: 12px 16px; color: var(--text); font-size: 14px; width: 280px; outline: none;
-    }
-    .login-box input:focus { border-color: var(--accent); }
-    .login-box button {
-      display: block; width: 280px; margin-top: 10px; background: var(--accent);
-      color: #fff; border: none; border-radius: 8px; padding: 12px; font-weight: 700;
-      font-size: 14px; cursor: pointer;
-    }
-    .login-error { color: var(--red); font-size: 12px; margin-top: 8px; }
-    .hidden { display: none !important; }
-
-    /* Header */
     header {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; gap: 10px;
       margin-bottom: 20px; padding-bottom: 14px;
       border-bottom: 2px solid rgba(59,130,246,0.15);
     }
-    .h-left { display: flex; align-items: center; gap: 10px; }
-    .h-left img { width: 32px; height: 32px; }
+    header img { width: 32px; height: 32px; }
     .h-title { font-size: 15px; font-weight: 700; }
     .h-sub { font-size: 11px; color: var(--muted); }
 
-    /* Stats row */
-    .stats-row { display: flex; gap: 12px; margin-bottom: 20px; }
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
     .stat-card {
-      flex: 1; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 14px 16px; text-align: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; text-align: center;
     }
-    .stat-val { font-size: 28px; font-weight: 800; line-height: 1; }
+    .stat-val { font-size: 26px; font-weight: 800; line-height: 1; }
     .stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
-    .stat-val.green { color: var(--green); }
-    .stat-val.orange { color: var(--orange); }
+    .green { color: var(--green); }
+    .orange { color: var(--orange); }
+    .accent { color: var(--accent); }
+
+    /* Progress */
+    .progress-wrap { margin-bottom: 18px; }
+    .progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--green); border-radius: 4px; transition: width 0.5s; }
+    .progress-label { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
 
     /* Scan box */
     .scan-box {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 24px; margin-bottom: 20px;
+      background: var(--surface); border: 2px solid var(--border);
+      border-radius: 12px; padding: 24px; margin-bottom: 18px;
     }
+    .scan-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
     .scan-row { display: flex; gap: 12px; align-items: flex-end; }
     .field { flex: 1; display: flex; flex-direction: column; gap: 5px; }
     .field label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
     .field input {
       background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
-      padding: 12px 14px; color: var(--text); font-size: 14px; outline: none;
+      padding: 14px; color: var(--text); font-size: 14px; outline: none; font-family: inherit;
     }
     .field input:focus { border-color: var(--accent); }
-    .uid-input { font-family: 'Consolas', monospace; font-size: 20px !important; font-weight: 700; letter-spacing: 2px; }
-    .scan-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .uid-input { font-family: 'Consolas', monospace !important; font-size: 22px !important; font-weight: 700; letter-spacing: 2px; }
+    .scan-hint { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+    .scan-hint strong { color: var(--text); }
 
     /* Match preview */
-    .match-preview {
-      margin-top: 14px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 10px; padding: 16px; display: none;
+    .match-box {
+      margin-top: 14px; border-radius: 10px; padding: 16px;
+      display: none; border: 1px solid var(--border); background: var(--surface2);
     }
-    .match-preview.show { display: block; }
-    .match-preview.no-match { border-color: var(--red); }
-    .match-info { display: flex; justify-content: space-between; align-items: center; }
-    .match-details h3 { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
-    .match-details p { font-size: 12px; color: var(--muted); }
-    .match-details .existing-uid { color: var(--orange); font-size: 12px; margin-top: 4px; }
+    .match-box.show { display: block; }
+    .match-box.found { border-color: var(--green); }
+    .match-box.not-found { border-color: var(--red); background: rgba(239,68,68,0.06); }
+    .match-box.already { border-color: var(--orange); background: rgba(245,158,11,0.06); }
+
+    .match-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .match-info h3 { font-size: 16px; font-weight: 700; }
+    .match-info p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .match-info .tag {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 4px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tag-ok { background: rgba(34,197,94,0.15); color: var(--green); }
+    .tag-taken { background: rgba(245,158,11,0.15); color: var(--orange); }
+    .tag-blocked { background: rgba(239,68,68,0.15); color: var(--red); }
+
     .assign-btn {
       background: var(--green); color: #000; border: none; border-radius: 8px;
-      padding: 10px 24px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+      padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
     }
     .assign-btn:hover { opacity: 0.85; }
     .assign-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .no-match-text { color: var(--red); font-size: 14px; font-weight: 600; }
 
-    /* Registered list */
-    .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .list-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .no-match-text { font-size: 14px; font-weight: 600; color: var(--red); }
+
+    /* Table */
+    .section-title {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px;
+    }
     .table-wrap {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; overflow: hidden;
+      border-radius: 10px; overflow: hidden;
     }
     table { width: 100%; border-collapse: collapse; }
     thead th {
@@ -106,146 +104,122 @@
       letter-spacing: 1px; color: var(--muted); font-weight: 600;
       border-bottom: 1px solid var(--border); background: var(--surface2);
     }
-    tbody td { padding: 9px 14px; font-size: 12px; border-bottom: 1px solid rgba(26,39,68,0.4); }
+    tbody td { padding: 8px 14px; font-size: 12px; border-bottom: 1px solid rgba(26,39,68,0.4); }
     tbody tr:last-child td { border-bottom: none; }
     .td-uid { font-family: 'Consolas', monospace; font-weight: 700; color: var(--accent); font-size: 13px; }
     .td-roll { font-weight: 600; }
-    .td-name { color: var(--muted); }
-    .rm-btn {
-      background: none; border: 1px solid transparent; color: var(--muted);
-      cursor: pointer; padding: 3px 8px; border-radius: 4px; font-size: 11px;
-    }
-    .rm-btn:hover { color: var(--red); border-color: var(--red); }
-    .empty-msg { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
-
-    /* Upload overlay */
-    .upload-box {
-      text-align: center; padding: 60px 24px;
-    }
-    .upload-box svg { margin-bottom: 16px; opacity: 0.5; }
-    .upload-box p { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
-    .upload-btn {
-      background: var(--accent); color: #fff; border: none; border-radius: 8px;
-      padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer;
-    }
+    .empty-msg { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
 
     /* Toast */
     .toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--green); color: #000; padding: 12px 20px;
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--green); color: #000; padding: 12px 24px;
       border-radius: 8px; font-size: 13px; font-weight: 700;
-      transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 50;
+      opacity: 0; transition: all 0.3s; z-index: 50; text-align: center;
     }
-    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     .toast.error { background: var(--red); color: #fff; }
 
-    /* Progress bar */
-    .progress-wrap { margin-top: 6px; }
-    .progress-bar {
-      height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden;
+    /* Error state */
+    .error-state {
+      text-align: center; padding: 60px 20px;
     }
-    .progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s; }
-    .progress-text { font-size: 10px; color: var(--muted); margin-top: 3px; text-align: right; }
+    .error-state svg { margin-bottom: 16px; opacity: 0.4; }
+    .error-state h2 { font-size: 18px; margin-bottom: 8px; }
+    .error-state p { color: var(--muted); font-size: 13px; }
+
+    .hidden { display: none !important; }
 
     @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
       .scan-row { flex-direction: column; }
-      .stats-row { flex-wrap: wrap; }
-      .stat-card { min-width: 45%; }
+      .match-row { flex-direction: column; align-items: stretch; }
+      .assign-btn { width: 100%; text-align: center; }
     }
   </style>
 </head>
 <body>
-
-  <!-- LOGIN -->
-  <div id="login-overlay">
-    <div class="login-box">
+  <div class="layout">
+    <header>
       <img src="images/lgu-logo.png" alt="LGU">
-      <h2>Card Registration Tool</h2>
-      <p>Admin login required</p>
-      <input type="password" id="login-pass" placeholder="Admin password" autocomplete="off">
-      <button id="login-btn">Login</button>
-      <div class="login-error hidden" id="login-error"></div>
-    </div>
-  </div>
+      <div>
+        <div class="h-title">Card Registration</div>
+        <div class="h-sub">Lahore Garrison University — RFID Card Mapping</div>
+      </div>
+    </header>
 
-  <!-- MAIN -->
-  <div id="main-app" class="hidden">
-    <div class="layout">
-      <header>
-        <div class="h-left">
-          <img src="images/lgu-logo.png" alt="LGU">
-          <div>
-            <div class="h-title">Card Registration</div>
-            <div class="h-sub">Scan card → Type roll number → Assign</div>
+    <!-- Error state if no Excel -->
+    <div id="error-state" class="hidden">
+      <div class="error-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <h2>Not Ready Yet</h2>
+        <p>Student data hasn't been loaded. Contact Zaryab to set it up.</p>
+      </div>
+    </div>
+
+    <!-- Main work area -->
+    <div id="work-area" class="hidden">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val accent" id="s-total">0</div>
+          <div class="stat-lbl">Total Students</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val green" id="s-mapped">0</div>
+          <div class="stat-lbl">Cards Mapped</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val orange" id="s-remaining">0</div>
+          <div class="stat-lbl">Remaining</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="s-pct" style="color:var(--text)">0%</div>
+          <div class="stat-lbl">Progress</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-label">
+          <span id="progress-left">0 remaining</span>
+          <span id="progress-right">0% complete</span>
+        </div>
+      </div>
+
+      <div class="scan-box">
+        <div class="scan-title">Step 1: Scan Card &nbsp;&nbsp;→&nbsp;&nbsp; Step 2: Type Roll Number</div>
+        <div class="scan-row">
+          <div class="field" style="flex:1">
+            <label>Card UID</label>
+            <input type="text" id="uid-input" class="uid-input" placeholder="Tap card..." autocomplete="off" autofocus>
+          </div>
+          <div class="field" style="flex:1.5">
+            <label>Roll Number</label>
+            <input type="text" id="roll-input" placeholder="e.g. Fa-2025/BS-CMAI/069" autocomplete="off">
           </div>
         </div>
-      </header>
+        <div class="scan-hint">
+          <strong>1.</strong> Student taps card → UID fills in automatically &nbsp;
+          <strong>2.</strong> Type their roll number and press <strong>Enter</strong> &nbsp;
+          <strong>3.</strong> Verify name and click <strong>ASSIGN</strong>
+        </div>
 
-      <!-- Upload state (shown if no Excel loaded) -->
-      <div id="upload-state" class="hidden">
-        <div class="scan-box">
-          <div class="upload-box">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-            <p>Upload your enrolled students Excel file to begin</p>
-            <button class="upload-btn" id="upload-btn">Choose Excel File</button>
-            <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none">
+        <div class="match-box" id="match-box">
+          <div class="match-row">
+            <div class="match-info" id="match-info"></div>
+            <button class="assign-btn" id="assign-btn">ASSIGN CARD</button>
           </div>
         </div>
       </div>
 
-      <!-- Work state -->
-      <div id="work-state" class="hidden">
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-val" id="s-total">0</div>
-            <div class="stat-lbl">Total Students</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val green" id="s-mapped">0</div>
-            <div class="stat-lbl">Cards Mapped</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val orange" id="s-remaining">0</div>
-            <div class="stat-lbl">Remaining</div>
-          </div>
-        </div>
-
-        <div class="scan-box">
-          <div class="scan-row">
-            <div class="field" style="flex:1.2">
-              <label>Card UID (scan card)</label>
-              <input type="text" id="uid-input" class="uid-input" placeholder="Tap card..." autocomplete="off" autofocus>
-            </div>
-            <div class="field" style="flex:1.5">
-              <label>Roll Number</label>
-              <input type="text" id="roll-input" placeholder="e.g. Fa-2025/BS-CMAI/069" autocomplete="off">
-            </div>
-          </div>
-          <div class="scan-hint">Scan card → UID fills in → Type roll number → Press Enter to search → Click ASSIGN</div>
-
-          <div class="match-preview" id="match-preview">
-            <div class="match-info">
-              <div class="match-details" id="match-details"></div>
-              <button class="assign-btn" id="assign-btn">ASSIGN CARD</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="list-header">
-          <div class="list-title">Registered Cards</div>
-          <div class="progress-wrap" style="width:200px">
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-            <div class="progress-text" id="progress-text">0%</div>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>#</th><th>Card UID</th><th>Roll Number</th><th>Name</th><th>Degree</th><th></th></tr></thead>
-            <tbody id="table-body">
-              <tr><td colspan="6" class="empty-msg">No cards registered yet</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="section-title">Recently Mapped</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Card UID</th><th>Roll Number</th><th>Name</th><th>Degree</th></tr></thead>
+          <tbody id="table-body">
+            <tr><td colspan="5" class="empty-msg">No cards mapped yet. Start scanning!</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -253,20 +227,7 @@
   <div class="toast" id="toast"></div>
 
 <script>
-let token = sessionStorage.getItem('reg_token');
 let currentMatch = null;
-
-function authHeaders() {
-  return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
-}
-
-async function authFetch(url, opts = {}) {
-  if (!opts.headers) opts.headers = {};
-  opts.headers['Authorization'] = 'Bearer ' + token;
-  const res = await fetch(url, opts);
-  if (res.status === 401) { sessionStorage.removeItem('reg_token'); location.reload(); }
-  return res;
-}
 
 function toast(msg, err) {
   const t = document.getElementById('toast');
@@ -277,82 +238,45 @@ function toast(msg, err) {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-// Login
-document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
-async function doLogin() {
-  const pass = document.getElementById('login-pass').value;
+async function init() {
   try {
-    const res = await fetch('/api/admin/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pass })
-    });
-    const data = await res.json();
-    if (data.token) {
-      token = data.token;
-      sessionStorage.setItem('reg_token', token);
-      showApp();
-    } else {
-      document.getElementById('login-error').textContent = 'Wrong password';
-      document.getElementById('login-error').classList.remove('hidden');
+    const res = await fetch('/api/register/stats');
+    if (res.status === 404) {
+      document.getElementById('error-state').classList.remove('hidden');
+      return;
     }
-  } catch (e) {
-    document.getElementById('login-error').textContent = 'Connection error';
-    document.getElementById('login-error').classList.remove('hidden');
-  }
-}
-
-async function showApp() {
-  document.getElementById('login-overlay').classList.add('hidden');
-  document.getElementById('main-app').classList.remove('hidden');
-  const res = await authFetch('/api/register/stats');
-  if (res.status === 404) {
-    document.getElementById('upload-state').classList.remove('hidden');
-    document.getElementById('work-state').classList.add('hidden');
-  } else {
     const stats = await res.json();
-    showWorkState(stats);
+    document.getElementById('work-area').classList.remove('hidden');
+    updateStats(stats);
+    loadRecent();
+  } catch (e) {
+    document.getElementById('error-state').classList.remove('hidden');
   }
 }
 
-function showWorkState(stats) {
-  document.getElementById('upload-state').classList.add('hidden');
-  document.getElementById('work-state').classList.remove('hidden');
-  document.getElementById('s-total').textContent = stats.total;
-  document.getElementById('s-mapped').textContent = stats.mapped;
-  document.getElementById('s-remaining').textContent = stats.remaining;
-  const pct = stats.total > 0 ? ((stats.mapped / stats.total) * 100).toFixed(1) : 0;
+function updateStats(stats) {
+  document.getElementById('s-total').textContent = stats.total.toLocaleString();
+  document.getElementById('s-mapped').textContent = stats.mapped.toLocaleString();
+  document.getElementById('s-remaining').textContent = stats.remaining.toLocaleString();
+  const pct = stats.total > 0 ? ((stats.mapped / stats.total) * 100).toFixed(1) : '0';
+  document.getElementById('s-pct').textContent = pct + '%';
   document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = pct + '% complete';
-  loadRecent();
-  document.getElementById('uid-input').focus();
+  document.getElementById('progress-left').textContent = stats.remaining.toLocaleString() + ' remaining';
+  document.getElementById('progress-right').textContent = pct + '% complete';
 }
 
-// Upload
-document.getElementById('upload-btn').addEventListener('click', () => document.getElementById('excel-file').click());
-document.getElementById('excel-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const fd = new FormData();
-  fd.append('file', file);
-  const res = await fetch('/api/register/upload', {
-    method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd
-  });
-  const data = await res.json();
-  if (data.success) {
-    toast('Excel loaded: ' + data.stats.total + ' students');
-    showWorkState(data.stats);
-  } else {
-    toast(data.error || 'Upload failed', true);
-  }
-});
+async function refreshStats() {
+  const res = await fetch('/api/register/stats');
+  const stats = await res.json();
+  updateStats(stats);
+  loadRecent();
+}
 
 // Scan flow
 const uidInput = document.getElementById('uid-input');
 const rollInput = document.getElementById('roll-input');
-const matchPreview = document.getElementById('match-preview');
-const matchDetails = document.getElementById('match-details');
+const matchBox = document.getElementById('match-box');
+const matchInfo = document.getElementById('match-info');
 const assignBtn = document.getElementById('assign-btn');
 
 uidInput.addEventListener('keydown', e => {
@@ -363,7 +287,7 @@ let searchTimeout;
 rollInput.addEventListener('input', () => {
   clearTimeout(searchTimeout);
   const q = rollInput.value.trim();
-  if (q.length < 3) { matchPreview.classList.remove('show'); currentMatch = null; return; }
+  if (q.length < 3) { matchBox.className = 'match-box'; currentMatch = null; return; }
   searchTimeout = setTimeout(() => searchRoll(q), 300);
 });
 rollInput.addEventListener('keydown', e => {
@@ -375,36 +299,53 @@ rollInput.addEventListener('keydown', e => {
 });
 
 async function searchRoll(q) {
-  const res = await authFetch('/api/register/search?q=' + encodeURIComponent(q));
+  const res = await fetch('/api/register/search?q=' + encodeURIComponent(q));
   const matches = await res.json();
+
   if (!matches.length) {
-    matchPreview.className = 'match-preview show no-match';
-    matchDetails.innerHTML = '<div class="no-match-text">No student found for "' + esc(q) + '"</div>';
+    matchBox.className = 'match-box show not-found';
+    matchInfo.innerHTML = '<div class="no-match-text">No student found matching "' + esc(q) + '"</div><p style="color:var(--muted);font-size:12px;margin-top:4px">Check the roll number format and try again</p>';
     assignBtn.style.display = 'none';
     currentMatch = null;
     return;
   }
+
   const m = matches[0];
   currentMatch = m;
-  matchPreview.className = 'match-preview show';
+
   let html = '<h3>' + esc(m.name) + '</h3>';
-  html += '<p>' + esc(m.roll) + ' &bull; ' + esc(m.degree) + ' &bull; ' + esc(m.session) + '</p>';
+  html += '<p>' + esc(m.roll) + ' &bull; ' + esc(m.degree) + ' &bull; ' + esc(m.session) + ' &bull; ' + esc(m.gender) + '</p>';
+
   if (m.cardUid) {
-    html += '<div class="existing-uid">Already has card: ' + esc(m.cardUid) + '</div>';
+    matchBox.className = 'match-box show already';
+    html += '<span class="tag tag-taken">Already mapped — Card ' + esc(m.cardUid) + '</span>';
     assignBtn.style.display = 'none';
   } else {
+    matchBox.className = 'match-box show found';
+    html += '<span class="tag tag-ok">Ready to assign</span>';
     assignBtn.style.display = '';
+    if (!uidInput.value.trim()) {
+      assignBtn.disabled = true;
+      assignBtn.textContent = 'SCAN CARD FIRST';
+    } else {
+      assignBtn.disabled = false;
+      assignBtn.textContent = 'ASSIGN CARD';
+    }
   }
-  matchDetails.innerHTML = html;
-
-  if (!uidInput.value.trim()) {
-    assignBtn.disabled = true;
-    assignBtn.textContent = 'SCAN CARD FIRST';
-  } else {
-    assignBtn.disabled = false;
-    assignBtn.textContent = 'ASSIGN CARD';
-  }
+  matchInfo.innerHTML = html;
 }
+
+uidInput.addEventListener('input', () => {
+  if (currentMatch && !currentMatch.cardUid) {
+    if (uidInput.value.trim()) {
+      assignBtn.disabled = false;
+      assignBtn.textContent = 'ASSIGN CARD';
+    } else {
+      assignBtn.disabled = true;
+      assignBtn.textContent = 'SCAN CARD FIRST';
+    }
+  }
+});
 
 assignBtn.addEventListener('click', assignCard);
 
@@ -416,70 +357,57 @@ async function assignCard() {
   assignBtn.disabled = true;
   assignBtn.textContent = 'SAVING...';
 
-  const res = await authFetch('/api/register/assign', {
-    method: 'POST', headers: authHeaders(),
-    body: JSON.stringify({ roll_number: roll, card_uid: uid })
-  });
-  const data = await res.json();
-  if (data.success) {
-    toast(uid + ' → ' + data.student.name);
-    uidInput.value = '';
-    rollInput.value = '';
-    matchPreview.classList.remove('show');
-    currentMatch = null;
-    refreshStats();
-    uidInput.focus();
-  } else {
-    toast(data.error || 'Failed', true);
+  try {
+    const res = await fetch('/api/register/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roll_number: roll, card_uid: uid })
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('Mapped: ' + uid + ' → ' + data.student.name);
+      uidInput.value = '';
+      rollInput.value = '';
+      matchBox.className = 'match-box';
+      currentMatch = null;
+      refreshStats();
+      uidInput.focus();
+    } else {
+      toast(data.error || 'Failed to assign', true);
+      assignBtn.disabled = false;
+      assignBtn.textContent = 'ASSIGN CARD';
+    }
+  } catch (e) {
+    toast('Connection error — try again', true);
     assignBtn.disabled = false;
     assignBtn.textContent = 'ASSIGN CARD';
   }
 }
 
-async function refreshStats() {
-  const res = await authFetch('/api/register/stats');
-  const stats = await res.json();
-  document.getElementById('s-total').textContent = stats.total;
-  document.getElementById('s-mapped').textContent = stats.mapped;
-  document.getElementById('s-remaining').textContent = stats.remaining;
-  const pct = stats.total > 0 ? ((stats.mapped / stats.total) * 100).toFixed(1) : 0;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = pct + '% complete';
-  loadRecent();
-}
-
 async function loadRecent() {
-  const res = await authFetch('/api/register/recent');
-  const list = await res.json();
-  const tbody = document.getElementById('table-body');
-  if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No cards registered yet</td></tr>';
-    return;
-  }
-  tbody.innerHTML = list.slice().reverse().map((r, i) =>
-    '<tr>' +
-    '<td style="color:var(--muted)">' + (list.length - i) + '</td>' +
-    '<td class="td-uid">' + esc(r.cardUid) + '</td>' +
-    '<td class="td-roll">' + esc(r.roll) + '</td>' +
-    '<td class="td-name">' + esc(r.name) + '</td>' +
-    '<td style="color:var(--muted);font-size:11px">' + esc(r.degree) + '</td>' +
-    '<td><button class="rm-btn" onclick="unassign(\'' + esc(r.roll.replace(/'/g, "\\'")) + '\')">Remove</button></td>' +
-    '</tr>'
-  ).join('');
+  try {
+    const res = await fetch('/api/register/recent');
+    const list = await res.json();
+    const tbody = document.getElementById('table-body');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No cards mapped yet. Start scanning!</td></tr>';
+      return;
+    }
+    const recent = list.slice(-50).reverse();
+    tbody.innerHTML = recent.map((r, i) =>
+      '<tr>' +
+      '<td style="color:var(--muted)">' + (i + 1) + '</td>' +
+      '<td class="td-uid">' + esc(r.cardUid) + '</td>' +
+      '<td class="td-roll">' + esc(r.roll) + '</td>' +
+      '<td>' + esc(r.name) + '</td>' +
+      '<td style="color:var(--muted);font-size:11px">' + esc(r.degree) + '</td>' +
+      '</tr>'
+    ).join('');
+  } catch (e) {}
 }
 
-async function unassign(roll) {
-  if (!confirm('Remove card mapping for ' + roll + '?')) return;
-  await authFetch('/api/register/unassign', {
-    method: 'POST', headers: authHeaders(),
-    body: JSON.stringify({ roll_number: roll })
-  });
-  toast('Removed');
-  refreshStats();
-}
-
-// Init
-if (token) showApp();
+init();
+setInterval(refreshStats, 15000);
 </script>
 </body>
 </html>
