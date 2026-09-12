@@ -48,9 +48,10 @@ header {
 .header-logo {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 50%;
   object-fit: cover;
   background: #fff;
+  padding: 2px;
 }
 
 .header-title {
