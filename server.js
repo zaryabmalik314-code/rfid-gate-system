@@ -615,7 +615,17 @@ app.get('/api/logs', requireAdmin, async (req, res) => {
 });
 
 // --- STATS ---
-app.get('/api/stats', requireGate, async (req, res) => {
+function requireGateOrAdmin(req, res, next) {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) {
+    const token = auth.slice(7);
+    const session = adminSessions.get(token);
+    if (session && session.expires > Date.now()) return next();
+  }
+  return requireGate(req, res, next);
+}
+
+app.get('/api/stats', requireGateOrAdmin, async (req, res) => {
   const total = (await queryOne('SELECT COUNT(*) as c FROM students')).c;
   const enrolled = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='active'")).c;
   const graduated = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='graduated'")).c;
