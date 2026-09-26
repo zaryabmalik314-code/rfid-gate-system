@@ -15,6 +15,16 @@ const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 4000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LguAdmin2026';
+const GATE_TOKEN = process.env.GATE_TOKEN || '';
+
+function requireGate(req, res, next) {
+  if (!GATE_TOKEN) return next();
+  const token = req.headers['x-gate-token'] || req.query.gate_token;
+  if (token !== GATE_TOKEN) {
+    return res.status(403).json({ error: 'Invalid gate token' });
+  }
+  next();
+}
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -107,7 +117,7 @@ const COOLDOWN_MS = parseInt(process.env.SCAN_COOLDOWN_MS || '180000');
 const lastExitTime = new Map();
 
 // --- SCAN ENDPOINT ---
-app.post('/api/scan', async (req, res) => {
+app.post('/api/scan', requireGate, async (req, res) => {
   const { card_uid, gate_id } = req.body;
   const gate = (gate_id || 'main').trim();
 
@@ -120,7 +130,7 @@ app.post('/api/scan', async (req, res) => {
 
   const student = await queryOne(
     `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
-     FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
+     FROM students WHERE UPPER(card_uid) = $1`,
     [uid]
   );
 
@@ -273,7 +283,6 @@ app.post('/api/scan', async (req, res) => {
   // Broadcast to all connected WebSocket clients
   broadcast('scan', {
     timestamp: new Date().toISOString(),
-    card_uid: student.card_uid,
     student_name: student.name,
     roll_number: student.roll_number,
     department: student.department,
@@ -332,7 +341,8 @@ app.post('/api/scan', async (req, res) => {
     });
   }
 
-  res.json({ found: true, result, message, student, mode: scanMode, timetable });
+  const { card_uid: _uid, ...safeStudent } = student;
+  res.json({ found: true, result, message, student: safeStudent, mode: scanMode, timetable });
 });
 
 // --- STUDENTS CRUD (admin-only) ---
@@ -605,7 +615,7 @@ app.get('/api/logs', requireAdmin, async (req, res) => {
 });
 
 // --- STATS ---
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', requireGate, async (req, res) => {
   const total = (await queryOne('SELECT COUNT(*) as c FROM students')).c;
   const enrolled = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='active'")).c;
   const graduated = (await queryOne("SELECT COUNT(*) as c FROM students WHERE status='graduated'")).c;
@@ -662,9 +672,9 @@ app.get('/api/stats/detailed', requireAdmin, async (req, res) => {
 });
 
 // --- SYNC (for offline kiosk) ---
-app.get('/api/sync', async (req, res) => {
+app.get('/api/sync', requireGate, async (req, res) => {
   const students = await query(
-    'SELECT card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until, gender FROM students'
+    'SELECT name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until, gender FROM students'
   );
   res.json({ students, synced_at: new Date().toISOString() });
 });

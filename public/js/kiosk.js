@@ -7,6 +7,7 @@ let localStudents = null;
 const urlParams = new URLSearchParams(window.location.search);
 const GATE_MODE = urlParams.get('mode') === 'exit' ? 'exit' : 'entry';
 const GATE_ID = urlParams.get('gate') || 'main';
+const GATE_TOKEN = urlParams.get('token') || '';
 
 // --- SERVICE WORKER ---
 if ('serviceWorker' in navigator) {
@@ -14,9 +15,11 @@ if ('serviceWorker' in navigator) {
 }
 
 // --- OFFLINE SYNC ---
+const gateHeaders = GATE_TOKEN ? { 'x-gate-token': GATE_TOKEN } : {};
+
 async function syncStudents() {
   try {
-    const res = await fetch('/api/sync');
+    const res = await fetch('/api/sync', { headers: gateHeaders });
     const data = await res.json();
     localStorage.setItem('lgu_students', JSON.stringify(data.students));
     localStorage.setItem('lgu_sync_time', data.synced_at);
@@ -134,7 +137,7 @@ updateClock();
 // --- ENTRY COUNT ---
 async function updateEntryCount() {
   try {
-    const res = await fetch('/api/stats');
+    const res = await fetch('/api/stats', { headers: gateHeaders });
     const data = await res.json();
     todayEntries = data.entriesToday;
     document.getElementById('entry-count').textContent = todayEntries;
@@ -154,7 +157,7 @@ async function handleScan() {
   try {
     const res = await fetch('/api/scan', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...gateHeaders },
       body: JSON.stringify({ card_uid: uid, mode: GATE_MODE, gate_id: GATE_ID })
     });
     const data = await res.json();
