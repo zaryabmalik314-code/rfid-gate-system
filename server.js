@@ -415,8 +415,9 @@ app.patch('/api/students/:id/status', requireAdmin, async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid status' });
   }
   if (status === 'suspended' && suspended_days && parseInt(suspended_days) > 0) {
+    const days = Math.min(parseInt(suspended_days), 3);
     const until = new Date();
-    until.setDate(until.getDate() + parseInt(suspended_days));
+    until.setDate(until.getDate() + days);
     await run('UPDATE students SET status = $1, suspended_until = $2 WHERE id = $3', [status, until.toISOString(), req.params.id]);
   } else {
     await run('UPDATE students SET status = $1, suspended_until = NULL WHERE id = $2', [status, req.params.id]);

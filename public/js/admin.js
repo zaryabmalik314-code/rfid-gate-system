@@ -195,8 +195,7 @@ let pendingSuspendId = null;
 function showSuspendModal(id, name) {
   pendingSuspendId = id;
   document.getElementById('suspend-title').textContent = `Suspend ${name}`;
-  document.getElementById('suspend-desc').textContent = `Choose how long to suspend ${name} from campus.`;
-  document.getElementById('suspend-days-input').value = '';
+  document.getElementById('suspend-desc').textContent = `Choose how long to suspend ${name} from campus (max 3 days).`;
   document.getElementById('suspend-overlay').classList.remove('hidden');
 }
 
