@@ -4,12 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LGU Smart Gate</title>
-  <link rel="stylesheet" href="css/kiosk.css?v=17">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/kiosk.css?v=20">
 </head>
 <body>
   <div id="app" class="screen idle-screen">
-    <!-- IDLE STATE -->
+
+    <!-- ====== IDLE STATE ====== -->
     <div id="idle-view">
+      <div class="k-bg">
+        <div class="k-orb k-orb-1"></div>
+        <div class="k-orb k-orb-2"></div>
+        <div class="k-orb k-orb-3"></div>
+        <div class="k-grid-bg"></div>
+      </div>
+
       <!-- Top strip -->
       <div class="k-topstrip">
         <div class="k-topleft">
@@ -27,7 +38,9 @@
       <!-- Main scan area -->
       <div class="k-center">
         <div class="k-pulse-ring"></div>
+        <div class="k-pulse-ring k-pulse-ring-2"></div>
         <div class="k-scan-area">
+          <div class="k-scan-glow"></div>
           <div class="k-corner k-tl"></div>
           <div class="k-corner k-tr"></div>
           <div class="k-corner k-bl"></div>
@@ -45,7 +58,10 @@
         <div class="k-sublabel">Place your university ID on the reader</div>
         <div class="k-input-row">
           <input type="text" id="card-input" class="k-input" placeholder="Or enter roll number" autocomplete="off" autofocus>
-          <button id="scan-btn" class="k-btn">VERIFY</button>
+          <button id="scan-btn" class="k-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <span>VERIFY</span>
+          </button>
         </div>
       </div>
 
@@ -64,7 +80,7 @@
       </div>
     </div>
 
-    <!-- RESULT STATE -->
+    <!-- ====== RESULT STATE ====== -->
     <div id="result-view" class="hidden">
       <div class="result-header">
         <img src="images/lgu-logo.png" alt="LGU" class="result-logo">
@@ -77,7 +93,9 @@
       </div>
       <div class="student-card" id="student-card">
         <div class="student-left">
-          <img id="student-photo" src="" alt="Student Photo" class="student-photo">
+          <div class="student-photo-wrap">
+            <img id="student-photo" src="" alt="Student Photo" class="student-photo">
+          </div>
           <div class="student-status-badge" id="student-status-badge">ENROLLED</div>
         </div>
         <div class="student-info">
@@ -133,6 +151,6 @@
     </div>
   </div>
 
-  <script src="js/kiosk.js?v=17"></script>
+  <script src="js/kiosk.js?v=20"></script>
 </body>
 </html>
