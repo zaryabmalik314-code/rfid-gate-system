@@ -206,7 +206,6 @@ function closeSuspendModal() {
 }
 
 function selectSuspendDays(days) {
-  document.getElementById('suspend-days-input').value = days;
   confirmSuspend(days);
 }
 
@@ -223,9 +222,7 @@ async function confirmSuspend(days) {
 }
 
 function confirmSuspendCustom() {
-  const days = parseInt(document.getElementById('suspend-days-input').value);
-  if (!days || days < 1) { document.getElementById('suspend-days-input').focus(); return; }
-  confirmSuspend(days);
+  confirmSuspend(1);
 }
 
 async function updateStatus(id, status) {
