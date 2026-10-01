@@ -92,6 +92,7 @@ function switchTab(tab) {
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
   if (tab === 'team') { loadTeamMembers(); loadRegExcelStats(); }
   if (tab === 'analytics') loadAnalytics();
+  if (tab === 'ait') loadAitUsers();
 }
 
 // --- STATS ---
@@ -1160,4 +1161,80 @@ async function loadRegExcelStats() {
     const s = await res.json();
     el.innerHTML = `Current file: <strong>${s.total}</strong> students, <strong style="color:var(--green)">${s.mapped}</strong> mapped, <strong style="color:var(--orange)">${s.remaining}</strong> remaining`;
   } catch (e) {}
+}
+
+// --- AIT DEVICE ---
+let aitStudentCache = null;
+
+async function loadAitUsers() {
+  const container = document.getElementById('ait-users-list');
+  try {
+    const res = await authFetch('/api/ait/users');
+    const users = await res.json();
+    if (!users.length) {
+      container.innerHTML = '<p style="color:var(--muted)">No device users synced yet. Connect the AIT device and it will push enrolled users automatically.</p>';
+      return;
+    }
+    let html = '<table class="data-table"><thead><tr><th>PIN</th><th>Device Name</th><th>Linked Student</th><th>Action</th></tr></thead><tbody>';
+    for (const u of users) {
+      const linked = u.student_id ? `<span style="color:var(--green)">${u.student_name} (${u.roll_number})</span>` : '<span style="color:var(--orange)">Not linked</span>';
+      const action = u.student_id
+        ? `<button class="btn-danger-sm" onclick="unlinkAit('${u.enrollid}')">Unlink</button>`
+        : `<button class="btn-primary-sm" onclick="showAitLink('${u.enrollid}', '${u.name}')">Link Student</button>`;
+      html += `<tr><td>${u.enrollid}</td><td>${u.name || '—'}</td><td>${linked}</td><td>${action}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<p style="color:var(--red)">Failed to load AIT users</p>';
+  }
+}
+
+async function showAitLink(enrollid, deviceName) {
+  if (!aitStudentCache) {
+    const res = await authFetch('/api/students?limit=10000');
+    const data = await res.json();
+    aitStudentCache = data.students || [];
+  }
+  if (!aitStudentCache.length) {
+    alert('No students in database. Import students first.');
+    return;
+  }
+  const search = prompt(`Link AIT PIN ${enrollid} (${deviceName}) to which student?\nType roll number or name to search:`);
+  if (!search) return;
+  const q = search.toUpperCase();
+  const matches = aitStudentCache.filter(s => s.name.toUpperCase().includes(q) || s.roll_number.toUpperCase().includes(q));
+  if (!matches.length) { alert('No matching student found.'); return; }
+  let pickMsg = 'Select student:\n';
+  matches.slice(0, 10).forEach((s, i) => { pickMsg += `${i + 1}. ${s.name} — ${s.roll_number} (${s.department})\n`; });
+  if (matches.length > 10) pickMsg += `...and ${matches.length - 10} more\n`;
+  const pick = prompt(pickMsg);
+  if (!pick) return;
+  const idx = parseInt(pick) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= matches.length) { alert('Invalid selection'); return; }
+  const student = matches[idx];
+  const res = await authFetch('/api/ait/link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enrollid, student_id: student.id })
+  });
+  if (res.ok) {
+    aitStudentCache = null;
+    loadAitUsers();
+  } else {
+    alert('Failed to link');
+  }
+}
+
+async function unlinkAit(enrollid) {
+  if (!confirm(`Unlink AIT PIN ${enrollid}?`)) return;
+  const res = await authFetch('/api/ait/unlink', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enrollid })
+  });
+  if (res.ok) {
+    aitStudentCache = null;
+    loadAitUsers();
+  }
 }
