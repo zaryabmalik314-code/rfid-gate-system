@@ -1314,6 +1314,33 @@ app.delete('/api/team/:id', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
+// --- AIT DEVICE USER MANAGEMENT ---
+app.get('/api/ait/users', requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT a.id, a.enrollid, a.name, a.device_sn, a.student_id, a.synced_at,
+            s.name AS student_name, s.roll_number
+     FROM ait_users a LEFT JOIN students s ON a.student_id = s.id
+     ORDER BY a.enrollid::int`
+  );
+  res.json(rows);
+});
+
+app.post('/api/ait/link', requireAdmin, async (req, res) => {
+  const { enrollid, student_id } = req.body;
+  if (!enrollid || !student_id) return res.status(400).json({ error: 'enrollid and student_id required' });
+  await run('UPDATE students SET ait_pin = $1 WHERE id = $2', [String(enrollid), student_id]);
+  await run('UPDATE ait_users SET student_id = $1 WHERE enrollid = $2', [student_id, String(enrollid)]);
+  res.json({ success: true });
+});
+
+app.post('/api/ait/unlink', requireAdmin, async (req, res) => {
+  const { enrollid } = req.body;
+  if (!enrollid) return res.status(400).json({ error: 'enrollid required' });
+  await run('UPDATE students SET ait_pin = NULL WHERE ait_pin = $1', [String(enrollid)]);
+  await run('UPDATE ait_users SET student_id = NULL WHERE enrollid = $1', [String(enrollid)]);
+  res.json({ success: true });
+});
+
 // --- AIT / YUNATT PUSH PROTOCOL ---
 // AIT devices use /pub/api instead of /iclock/cdata
 // express.json() on line 31 already parses the body
@@ -1359,9 +1386,22 @@ app.post('/pub/api', async (req, res) => {
     return res.json({ ret: cmd, result: true });
   }
 
-  // User sync commands
+  // User sync — store device-enrolled users for admin mapping
   if (cmd === 'senduser' || cmd === 'senduserinfo') {
-    console.log(`[ait] User sync from device — ignoring (E-GATE manages users)`);
+    const enrollid = String(data.enrollid || '');
+    const name = data.name || '';
+    if (enrollid) {
+      try {
+        await run(
+          `INSERT INTO ait_users (enrollid, name, device_sn, synced_at) VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (enrollid) DO UPDATE SET name = $2, device_sn = $3, synced_at = NOW()`,
+          [enrollid, name, sn]
+        );
+        console.log(`[ait] Stored device user: enrollid=${enrollid} name=${name}`);
+      } catch (e) {
+        console.log(`[ait] Failed to store device user: ${e.message}`);
+      }
+    }
     return res.json({ ret: cmd, result: true });
   }
 
@@ -1384,7 +1424,7 @@ app.all('/pub/*', (req, res) => {
 async function processAitPunch(pin) {
   const student = await queryOne(
     `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
-     FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
+     FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1 OR ait_pin = $1`,
     [pin]
   );
   const gate = 'ait-device';
@@ -1646,8 +1686,10 @@ async function start() {
   try { await pool.query('ALTER TABLE students ADD COLUMN cnic TEXT'); } catch(e) {}
   try { await pool.query('ALTER TABLE students ADD COLUMN phone TEXT'); } catch(e) {}
   try { await pool.query('ALTER TABLE students ADD COLUMN gender TEXT'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN ait_pin TEXT'); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_card_uid ON students(card_uid)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_ait_pin ON students(ait_pin)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_roll_number ON students(roll_number)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_status ON students(status)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_card_uid_upper ON students(UPPER(card_uid))');
@@ -1706,6 +1748,17 @@ async function start() {
     )
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_alert_timestamp ON alerts(timestamp)');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ait_users (
+      id SERIAL PRIMARY KEY,
+      enrollid TEXT NOT NULL UNIQUE,
+      name TEXT,
+      device_sn TEXT,
+      student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+      synced_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS team_members (
