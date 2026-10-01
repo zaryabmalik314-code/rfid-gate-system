@@ -1319,43 +1319,66 @@ app.delete('/api/team/:id', requireAdmin, async (req, res) => {
 // express.json() on line 31 already parses the body
 app.post('/pub/api', async (req, res) => {
   const data = req.body;
-  console.log(`[ait] POST /pub/api body=${JSON.stringify(data).substring(0, 1000)}`);
+  const cmd = data && data.cmd;
+  const sn = data && data.sn;
+  console.log(`[ait] POST /pub/api cmd=${cmd} sn=${sn} body=${JSON.stringify(data).substring(0, 1000)}`);
 
-  if (data && typeof data === 'object') {
-    // Handle attendance/punch records
-    const records = data.records || data.data || data.log || data.rows
-      || (data.payload && data.payload.records) || (Array.isArray(data) ? data : null);
-
-    if (records && Array.isArray(records)) {
-      for (const rec of records) {
-        const pin = String(rec.pin || rec.user_id || rec.userId || rec.enrollId || rec.empCode || rec.id || '').toUpperCase();
-        if (!pin) continue;
-        console.log(`[ait] Punch record: pin=${pin}`);
-        await processAitPunch(pin);
-      }
-    }
-
-    // Some devices send single record at top level
-    if (data.pin || data.user_id || data.userId || data.enrollId || data.empCode) {
-      const pin = String(data.pin || data.user_id || data.userId || data.enrollId || data.empCode).toUpperCase();
-      console.log(`[ait] Single punch: pin=${pin}`);
-      await processAitPunch(pin);
-    }
+  // Device registration / heartbeat
+  if (cmd === 'reg') {
+    console.log(`[ait] Device ${sn} registering — model=${data.devinfo?.modelname} fw=${data.devinfo?.firmware} users=${data.devinfo?.useduser} logs=${data.devinfo?.usednewlog}`);
+    return res.json({
+      ret: 'reg',
+      result: true,
+      cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      nosenduser: false,
+      nosendlog: false,
+      cloudSn: sn
+    });
   }
 
-  // Return success with returnCode 0 — required for device approval
-  res.json({ returnCode: 0, code: 0, message: 'success', result: true });
+  // Attendance log push
+  if (cmd === 'sendlog') {
+    const records = data.record || data.records || [];
+    const logArr = Array.isArray(records) ? records : [records];
+    console.log(`[ait] Received ${logArr.length} log records`);
+    for (const rec of logArr) {
+      const pin = String(rec.enrollid || rec.pin || rec.userId || rec.empCode || rec.id || '').toUpperCase();
+      if (!pin) continue;
+      console.log(`[ait] Log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
+      await processAitPunch(pin);
+    }
+    return res.json({ ret: 'sendlog', result: true, count: logArr.length });
+  }
+
+  // Real-time event push
+  if (cmd === 'sendrtlog' || cmd === 'rtlog') {
+    const rec = data.record || data;
+    const pin = String(rec.enrollid || rec.pin || rec.userId || rec.empCode || '').toUpperCase();
+    console.log(`[ait] Realtime log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
+    if (pin) await processAitPunch(pin);
+    return res.json({ ret: cmd, result: true });
+  }
+
+  // User sync commands
+  if (cmd === 'senduser' || cmd === 'senduserinfo') {
+    console.log(`[ait] User sync from device — ignoring (E-GATE manages users)`);
+    return res.json({ ret: cmd, result: true });
+  }
+
+  // Default response for any other command
+  console.log(`[ait] Unknown cmd: ${cmd}`);
+  res.json({ ret: cmd || 'unknown', result: true, returnCode: 0 });
 });
 
 app.get('/pub/api', (req, res) => {
   console.log(`[ait] GET /pub/api query=${JSON.stringify(req.query)}`);
-  res.json({ returnCode: 0, code: 0, message: 'success', result: true });
+  res.json({ ret: 'reg', result: true, returnCode: 0 });
 });
 
-// Catch-all for any other AIT/Yunatt paths the device might use
+// Catch-all for any other AIT/Yunatt paths
 app.all('/pub/*', (req, res) => {
   console.log(`[ait] ${req.method} ${req.path} body=${JSON.stringify(req.body).substring(0, 500)}`);
-  res.json({ returnCode: 0, code: 0, message: 'success', result: true });
+  res.json({ ret: 'ok', result: true, returnCode: 0 });
 });
 
 async function processAitPunch(pin) {
