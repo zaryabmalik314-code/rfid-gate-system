@@ -1314,6 +1314,120 @@ app.delete('/api/team/:id', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
+// --- AIT / YUNATT PUSH PROTOCOL ---
+// AIT devices use /pub/api instead of /iclock/cdata
+app.post('/pub/api', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  const body = req.body ? req.body.toString('utf8') : '';
+  console.log(`[ait] POST /pub/api body=${body.substring(0, 500)}`);
+  console.log(`[ait] Headers: ${JSON.stringify(req.headers)}`);
+  console.log(`[ait] Query: ${JSON.stringify(req.query)}`);
+
+  // Try parsing as JSON (Yunatt format)
+  let data;
+  try { data = JSON.parse(body); } catch(e) { data = null; }
+
+  if (data) {
+    console.log(`[ait] Parsed JSON keys: ${Object.keys(data).join(', ')}`);
+
+    // Handle attendance records if present
+    const records = data.records || data.data || data.log || (Array.isArray(data) ? data : null);
+    if (records && Array.isArray(records)) {
+      for (const rec of records) {
+        const pin = String(rec.pin || rec.user_id || rec.userId || rec.enrollId || rec.id || '').toUpperCase();
+        if (!pin) continue;
+
+        console.log(`[ait] Record: pin=${pin} time=${rec.time || rec.timestamp || rec.record_time}`);
+
+        const student = await queryOne(
+          `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
+           FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
+          [pin]
+        );
+
+        let result, message;
+        const gate = 'ait-device';
+
+        if (!student) {
+          result = 'unknown';
+          message = 'UNREGISTERED CARD';
+          await run(
+            `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
+             VALUES ($1, NULL, NULL, NULL, NULL, $2, $3, $4)`,
+            [pin, result, 'entry', gate]
+          );
+          sendAlert({
+            timestamp: new Date().toISOString(),
+            alert_type: 'unknown_card', severity: 'critical',
+            student_name: null, roll_number: null, gate_id: gate,
+            title: 'UNREGISTERED CARD',
+            detail: `Unknown PIN ${pin} from AIT device`
+          });
+        } else {
+          const scanMode = student.inside_campus ? 'exit' : 'entry';
+          const currentYear = new Date().getFullYear();
+          const isExpired = student.expiry_year && currentYear > student.expiry_year;
+
+          if (scanMode === 'exit') {
+            result = 'allowed'; message = 'EXIT RECORDED';
+            await run('UPDATE students SET inside_campus = FALSE WHERE id = $1', [student.id]);
+          } else if (isExpired) {
+            result = 'denied'; message = 'CARD EXPIRED';
+          } else if (student.status === 'suspended' && student.suspended_until && new Date(student.suspended_until) > new Date()) {
+            result = 'denied'; message = 'SUSPENDED';
+          } else if (student.status !== 'active') {
+            result = 'denied'; message = student.status.toUpperCase() + ' — ENTRY DENIED';
+          } else {
+            result = 'allowed'; message = 'ENTRY ALLOWED';
+            await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
+          }
+
+          await run(
+            `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [student.card_uid || pin, student.id, student.name, student.roll_number, student.status, result, scanMode, gate]
+          );
+
+          broadcast('scan', {
+            timestamp: new Date().toISOString(),
+            card_uid: student.card_uid || pin,
+            student_name: student.name, roll_number: student.roll_number,
+            result, mode: scanMode, gate_id: gate, message
+          });
+
+          if (result === 'denied') {
+            sendAlert({
+              timestamp: new Date().toISOString(),
+              alert_type: student.status === 'suspended' ? 'suspended_entry' : 'denied_entry',
+              severity: 'warning', student_name: student.name,
+              roll_number: student.roll_number, department: student.department,
+              photo_url: student.photo_url, gate_id: gate,
+              title: message, detail: `${student.name} (${student.roll_number}) — ${message}`
+            });
+          }
+        }
+
+        broadcast('scan', {
+          timestamp: new Date().toISOString(),
+          card_uid: student ? (student.card_uid || pin) : pin,
+          student_name: student ? student.name : null,
+          roll_number: student ? student.roll_number : null,
+          result, mode: student ? (student.inside_campus ? 'entry' : 'exit') : 'entry',
+          gate_id: 'ait-device', message
+        });
+      }
+    }
+  }
+
+  // Respond with success — device expects JSON or OK
+  res.json({ code: 0, message: 'success' });
+});
+
+// Also handle GET /pub/api (device handshake/polling)
+app.get('/pub/api', (req, res) => {
+  console.log(`[ait] GET /pub/api query=${JSON.stringify(req.query)}`);
+  res.json({ code: 0, message: 'success' });
+});
+
 // --- ICLOCK / ZKTeco PUSH PROTOCOL (AIT device integration) ---
 // The device pushes attendance records here and polls for commands.
 // Raw body parsing for iclock routes (device sends form-encoded or plain text)
