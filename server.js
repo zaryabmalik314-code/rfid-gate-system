@@ -1359,7 +1359,11 @@ app.post('/pub/api', async (req, res) => {
       cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
       nosenduser: false,
       nosendlog: false,
-      cloudSn: sn
+      cloudSn: sn,
+      selfcheck: 0,
+      attstate: 0,
+      showstate: 0,
+      manualstate: 0
     });
   }
 
