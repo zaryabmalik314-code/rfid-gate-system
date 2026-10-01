@@ -1777,6 +1777,49 @@ async function start() {
     console.log(`Cleaned up ${seedResult.rowCount} test students and their logs.`);
   }
 
+  // One-time auto-import from bundled Excel if students table is empty
+  const studentCount = await queryOne('SELECT COUNT(*) as c FROM students');
+  if (parseInt(studentCount.c) === 0) {
+    const importPath = path.join(__dirname, 'data', 'enrolled_students_mapped.xlsx');
+    if (fs.existsSync(importPath)) {
+      console.log('[IMPORT] Students table empty — auto-importing from bundled Excel...');
+      try {
+        const workbook = XLSX.readFile(importPath);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        let imported = 0, errors = 0;
+        const maxIdRow = await queryOne("SELECT COALESCE(MAX(id), 0) as m FROM students");
+        let uidCounter = parseInt(maxIdRow.m) + 1;
+        for (const r of rows) {
+          const name = String(r.studentname || r.name || '').trim();
+          const rollNo = String(r.StdRollNo || r.roll_number || '').trim();
+          const dept = String(r.DegreeID || r.department || '').trim();
+          const fatherName = String(r.FatherName || '').trim() || null;
+          const cnic = String(r.CNIC || '').trim() || null;
+          const phone = String(r.PhoneMobilePrimary || '').trim() || null;
+          const gender = String(r.Gender || '').trim() || null;
+          const joiningSession = r.JoiningSession || '';
+          if (!name || !rollNo) { errors++; continue; }
+          const cardUid = `LGU-${String(uidCounter).padStart(5, '0')}`;
+          uidCounter++;
+          const parsed = joiningSession ? parseJoiningSession(joiningSession) : { enrollYear: null, expiryYear: null, semester: 1 };
+          const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
+          try {
+            await run(
+              `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, father_name, cnic, phone, gender)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT DO NOTHING`,
+              [cardUid, name, rollNo, dept || 'Unknown', parsed.semester, 'A', 'active', photoUrl, parsed.enrollYear, parsed.expiryYear, fatherName, cnic, phone, gender]
+            );
+            imported++;
+          } catch { errors++; }
+        }
+        console.log(`[IMPORT] Done: ${imported} imported, ${errors} errors out of ${rows.length} rows`);
+      } catch (e) {
+        console.error('[IMPORT] Failed:', e.message);
+      }
+    }
+  }
+
   server.listen(PORT, () => {
     console.log(`\n  LGU Smart Gate System running on port ${PORT}`);
     console.log(`  Gate Kiosk (Entry): http://localhost:${PORT}/`);
