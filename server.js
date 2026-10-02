@@ -1431,7 +1431,7 @@ async function processAitPunch(pin) {
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1 OR ait_pin = $1`,
     [pin]
   );
-  const gate = 'ait-device';
+  const gate = 'gate-4';
   let result, message;
 
   if (!student) {
@@ -1561,7 +1561,7 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
         await run(
           `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
            VALUES ($1, NULL, NULL, NULL, NULL, $2, $3, $4)`,
-          [uid, result, 'entry', 'ait-' + sn]
+          [uid, result, 'entry', 'gate-4']
         );
         sendAlert({
           timestamp: new Date().toISOString(),
@@ -1569,14 +1569,14 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
           severity: 'critical',
           student_name: null,
           roll_number: null,
-          gate_id: 'ait-' + sn,
+          gate_id: 'gate-4',
           title: 'UNREGISTERED CARD',
           detail: `Unknown PIN ${uid} from AIT device ${sn}`
         });
         broadcast('scan', {
           timestamp: new Date().toISOString(),
           card_uid: uid, student_name: null, roll_number: null,
-          result, mode: 'entry', gate_id: 'ait-' + sn, message
+          result, mode: 'entry', gate_id: 'gate-4', message
         });
         continue;
       }
@@ -1616,7 +1616,7 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
       await run(
         `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [student.card_uid || uid, student.id, student.name, student.roll_number, student.status, result, scanMode, 'ait-' + sn]
+        [student.card_uid || uid, student.id, student.name, student.roll_number, student.status, result, scanMode, 'gate-4']
       );
 
       broadcast('scan', {
@@ -1624,7 +1624,7 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
         card_uid: student.card_uid || uid,
         student_name: student.name,
         roll_number: student.roll_number,
-        result, mode: scanMode, gate_id: 'ait-' + sn, message
+        result, mode: scanMode, gate_id: 'gate-4', message
       });
 
       // Alert for denied entries
@@ -1637,7 +1637,7 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
           roll_number: student.roll_number,
           department: student.department,
           photo_url: student.photo_url,
-          gate_id: 'ait-' + sn,
+          gate_id: 'gate-4',
           title: message,
           detail: `${student.name} (${student.roll_number}) — ${message}`
         });
