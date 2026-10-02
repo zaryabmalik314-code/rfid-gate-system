@@ -1367,6 +1367,15 @@ app.post('/pub/api', async (req, res) => {
     });
   }
 
+  // Heartbeat / keepalive
+  if (cmd === 'checklive') {
+    return res.json({
+      ret: 'checklive',
+      result: true,
+      cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    });
+  }
+
   // Attendance log push
   if (cmd === 'sendlog') {
     const records = data.record || data.records || [];
