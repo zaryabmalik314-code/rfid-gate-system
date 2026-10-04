@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // WebSocket for live counter updates from other gates
   function connectWS() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${location.host}`);
+    const ws = new WebSocket(`${protocol}//${location.host}/?token=${encodeURIComponent(GATE_TOKEN)}`);
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);

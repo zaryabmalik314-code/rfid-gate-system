@@ -790,7 +790,7 @@ function initLiveWS() {
   if (liveWS && liveWS.readyState <= 1) return;
 
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  liveWS = new WebSocket(`${protocol}//${location.host}`);
+  liveWS = new WebSocket(`${protocol}//${location.host}/?token=${encodeURIComponent(getToken() || '')}`);
 
   liveWS.onopen = () => {
     liveConnected = true;

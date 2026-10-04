@@ -11,19 +11,54 @@ const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+// WS broadcasts carry live student PII — require an admin session or the gate token
+const wss = new WebSocketServer({
+  server,
+  verifyClient: (info, cb) => {
+    let token = '';
+    try {
+      token = new URL(info.req.url, `http://${info.req.headers.host}`).searchParams.get('token') || '';
+    } catch (e) {}
+    const session = adminSessions.get(token);
+    const isAdmin = session && session.expires > Date.now();
+    if (isAdmin || (GATE_TOKEN && safeEqual(token, GATE_TOKEN))) return cb(true);
+    cb(false, 401, 'Unauthorized');
+  }
+});
 const PORT = process.env.PORT || 4000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LguAdmin2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error('FATAL: ADMIN_PASSWORD is not set. Refusing to start.');
+  process.exit(1);
+}
 const GATE_TOKEN = process.env.GATE_TOKEN || '';
 
+function safeEqual(a, b) {
+  const ab = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
 function requireGate(req, res, next) {
-  if (!GATE_TOKEN) return next();
+  if (!GATE_TOKEN) {
+    return res.status(503).json({ error: 'Gate authentication not configured' });
+  }
   const token = req.headers['x-gate-token'] || req.query.gate_token;
-  if (token !== GATE_TOKEN) {
+  if (!safeEqual(token, GATE_TOKEN)) {
     return res.status(403).json({ error: 'Invalid gate token' });
   }
   next();
+}
+
+// Device endpoints can't send custom headers — authenticate by serial allowlist
+const AIT_DEVICE_SN = (process.env.AIT_DEVICE_SN || '')
+  .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+
+function deviceAllowed(sn) {
+  if (!AIT_DEVICE_SN.length) return false;
+  return AIT_DEVICE_SN.includes(String(sn || '').trim().toUpperCase());
 }
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -31,7 +66,7 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const upload = multer({ dest: UPLOAD_DIR });
+const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 
 // --- ADMIN AUTH ---
 const adminSessions = new Map();
@@ -54,11 +89,35 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-app.post('/api/admin/login', (req, res) => {
+// --- LOGIN RATE LIMIT ---
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000;
+
+function rateLimitLogin(req, res, next) {
+  const key = req.ip;
+  const rec = loginAttempts.get(key);
+  if (rec && rec.count >= MAX_ATTEMPTS && Date.now() - rec.first < LOCKOUT_MS) {
+    const mins = Math.ceil((LOCKOUT_MS - (Date.now() - rec.first)) / 60000);
+    return res.status(429).json({ error: `Too many attempts. Try again in ${mins} min.` });
+  }
+  if (rec && Date.now() - rec.first >= LOCKOUT_MS) loginAttempts.delete(key);
+  next();
+}
+
+function recordFailedLogin(ip) {
+  const rec = loginAttempts.get(ip);
+  if (rec) rec.count++;
+  else loginAttempts.set(ip, { count: 1, first: Date.now() });
+}
+
+app.post('/api/admin/login', rateLimitLogin, (req, res) => {
   const { password } = req.body;
-  if (password !== ADMIN_PASSWORD) {
+  if (!safeEqual(password, ADMIN_PASSWORD)) {
+    recordFailedLogin(req.ip);
     return res.status(403).json({ error: 'Wrong password' });
   }
+  loginAttempts.delete(req.ip);
   const token = generateToken();
   adminSessions.set(token, { expires: Date.now() + 24 * 60 * 60 * 1000 });
   res.json({ token });
@@ -368,15 +427,17 @@ app.get('/api/students', requireAdmin, async (req, res) => {
     paramIdx++;
   }
 
+  const safeLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 500);
+  const safePage = Math.max(parseInt(page) || 1, 1);
   const totalRow = await queryOne(`SELECT COUNT(*) as total FROM students WHERE ${where}`, params);
   const total = parseInt(totalRow.total);
-  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const offset = (safePage - 1) * safeLimit;
   const students = await query(
     `SELECT * FROM students WHERE ${where} ORDER BY name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-    [...params, parseInt(limit), offset]
+    [...params, safeLimit, offset]
   );
 
-  res.json({ students, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+  res.json({ students, total, page: safePage, pages: Math.ceil(total / safeLimit) });
 });
 
 app.post('/api/students', requireAdmin, async (req, res) => {
@@ -1261,14 +1322,18 @@ app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res)
 // --- TEAM MEMBERS (for registration tool) ---
 const teamSessions = new Map();
 
-app.post('/api/team/login', async (req, res) => {
+app.post('/api/team/login', rateLimitLogin, async (req, res) => {
   const { name, pin } = req.body;
   if (!name || !pin) return res.status(400).json({ error: 'Name and PIN required' });
   try {
     const result = await pool.query(
       'SELECT id, name, status FROM team_members WHERE LOWER(name) = LOWER($1) AND pin = $2', [name.trim(), pin.trim()]
     );
-    if (!result.rows.length) return res.status(403).json({ error: 'Wrong name or PIN' });
+    if (!result.rows.length) {
+      recordFailedLogin(req.ip);
+      return res.status(403).json({ error: 'Wrong name or PIN' });
+    }
+    loginAttempts.delete(req.ip);
     const member = result.rows[0];
     if (member.status !== 'approved') return res.status(403).json({ error: 'Your account is pending approval. Contact admin.' });
     const token = generateToken();
@@ -1346,14 +1411,21 @@ const aitProcessedLogs = new Set();
 const aitPunchCooldown = new Map();
 const AIT_COOLDOWN_MS = 10000;
 setInterval(() => {
-  const cutoff = Date.now() - 120000;
-  for (const [k, v] of aitPunchCooldown) if (v < cutoff) aitPunchCooldown.delete(k);
+  const now = Date.now();
+  for (const [k, v] of aitPunchCooldown) if (v < now - 120000) aitPunchCooldown.delete(k);
   if (aitProcessedLogs.size > 5000) aitProcessedLogs.clear();
+  for (const [t, s] of adminSessions) if (s.expires < now) adminSessions.delete(t);
+  for (const [t, s] of teamSessions) if (s.expires < now) teamSessions.delete(t);
+  for (const [ip, r] of loginAttempts) if (now - r.first >= LOCKOUT_MS) loginAttempts.delete(ip);
 }, 60000);
 app.post('/pub/api', async (req, res) => {
   const data = req.body;
   const cmd = data && data.cmd;
   const sn = data && data.sn;
+  if (!deviceAllowed(sn)) {
+    console.warn(`[ait] REJECTED unknown device sn=${sn} ip=${req.ip} cmd=${cmd}`);
+    return res.status(403).json({ ret: cmd || 'unknown', result: false });
+  }
   console.log(`[ait] POST /pub/api cmd=${cmd} sn=${sn} body=${JSON.stringify(data).substring(0, 1000)}`);
 
   // Device registration / heartbeat
@@ -1552,6 +1624,10 @@ const iclockRaw = express.raw({ type: '*/*', limit: '1mb' });
 // Device calls this on boot to register itself and get config
 app.get('/iclock/cdata', (req, res) => {
   const sn = req.query.SN || req.query.sn || 'unknown';
+  if (!deviceAllowed(sn)) {
+    console.warn(`[iclock] REJECTED handshake from unknown device sn=${sn} ip=${req.ip}`);
+    return res.status(403).send('ERROR');
+  }
   console.log(`[iclock] Device ${sn} connected — handshake`);
   // Response tells device: push mode, timezone offset, stamp for new logs
   res.set('Content-Type', 'text/plain');
@@ -1577,6 +1653,11 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
   const sn = req.query.SN || req.query.sn || 'unknown';
   const table = (req.query.table || '').toUpperCase();
   const body = req.body ? req.body.toString('utf8') : '';
+
+  if (!deviceAllowed(sn)) {
+    console.warn(`[iclock] REJECTED unknown device sn=${sn} ip=${req.ip}`);
+    return res.status(403).send('ERROR');
+  }
 
   console.log(`[iclock] POST from ${sn} table=${table} body=${body.substring(0, 200)}`);
 
