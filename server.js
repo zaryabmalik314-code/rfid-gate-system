@@ -1366,6 +1366,8 @@ app.post('/pub/api', async (req, res) => {
       nosenduser: false,
       nosendlog: false,
       cloudSn: sn,
+      realtime: 1,
+      transinterval: 1,
       selfcheck: 0,
       attstate: 0,
       showstate: 0,
