@@ -1342,8 +1342,14 @@ app.post('/api/ait/unlink', requireAdmin, async (req, res) => {
 });
 
 // --- AIT / YUNATT PUSH PROTOCOL ---
-// AIT devices use /pub/api instead of /iclock/cdata
-// express.json() on line 31 already parses the body
+const aitProcessedLogs = new Set();
+const aitPunchCooldown = new Map();
+const AIT_COOLDOWN_MS = 10000;
+setInterval(() => {
+  const cutoff = Date.now() - 120000;
+  for (const [k, v] of aitPunchCooldown) if (v < cutoff) aitPunchCooldown.delete(k);
+  if (aitProcessedLogs.size > 5000) aitProcessedLogs.clear();
+}, 60000);
 app.post('/pub/api', async (req, res) => {
   const data = req.body;
   const cmd = data && data.cmd;
@@ -1381,11 +1387,16 @@ app.post('/pub/api', async (req, res) => {
     const records = data.record || data.records || [];
     const logArr = Array.isArray(records) ? records : [records];
     console.log(`[ait] Received ${logArr.length} log records`);
+    let processed = 0;
     for (const rec of logArr) {
       const pin = String(rec.enrollid || rec.pin || rec.userId || rec.empCode || rec.id || '').toUpperCase();
       if (!pin) continue;
+      const logKey = `${pin}:${rec.time || rec.logtime}`;
+      if (aitProcessedLogs.has(logKey)) continue;
+      aitProcessedLogs.add(logKey);
       console.log(`[ait] Log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
       await processAitPunch(pin);
+      processed++;
     }
     return res.json({ ret: 'sendlog', result: true, count: logArr.length });
   }
@@ -1435,6 +1446,11 @@ app.all('/pub/*', (req, res) => {
 });
 
 async function processAitPunch(pin) {
+  const now = Date.now();
+  const lastPunch = aitPunchCooldown.get(pin);
+  if (lastPunch && now - lastPunch < AIT_COOLDOWN_MS) return;
+  aitPunchCooldown.set(pin, now);
+
   const student = await queryOne(
     `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1 OR ait_pin = $1`,
