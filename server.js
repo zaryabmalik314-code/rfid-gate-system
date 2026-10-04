@@ -1456,7 +1456,7 @@ async function processAitPunch(pin) {
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1 OR ait_pin = $1`,
     [pin]
   );
-  const gate = 'gate-4';
+  const gate = 'gate4';
   let result, message;
 
   if (!student) {
@@ -1473,9 +1473,8 @@ async function processAitPunch(pin) {
       title: 'UNREGISTERED CARD', detail: `Unknown PIN ${pin} from AIT device`
     });
     broadcast('scan', {
-      timestamp: new Date().toISOString(), card_uid: pin,
-      student_name: null, roll_number: null,
-      result, mode: 'entry', gate_id: gate, message
+      type: 'scan', timestamp: new Date().toISOString(), card_uid: pin,
+      found: false, result, mode: 'entry', gate_id: gate, message
     });
     return;
   }
@@ -1485,29 +1484,51 @@ async function processAitPunch(pin) {
   const isExpired = student.expiry_year && currentYear > student.expiry_year;
 
   if (scanMode === 'exit') {
-    result = 'allowed'; message = 'EXIT RECORDED';
+    result = 'allowed'; message = 'EXIT RECORDED — GOODBYE';
     await run('UPDATE students SET inside_campus = FALSE WHERE id = $1', [student.id]);
+    student.inside_campus = false;
   } else if (isExpired) {
-    result = 'denied'; message = 'CARD EXPIRED';
+    result = 'denied'; message = `CARD EXPIRED (${student.enrollment_year}-${student.expiry_year})`;
   } else if (student.status === 'suspended' && student.suspended_until && new Date(student.suspended_until) > new Date()) {
-    result = 'denied'; message = 'SUSPENDED';
+    result = 'denied';
+    const daysLeft = Math.ceil((new Date(student.suspended_until) - new Date()) / 86400000);
+    message = `SUSPENDED — ${daysLeft} DAY${daysLeft !== 1 ? 'S' : ''} LEFT`;
   } else if (student.status !== 'active') {
     result = 'denied'; message = student.status.toUpperCase() + ' — ENTRY DENIED';
   } else {
-    result = 'allowed'; message = 'ENTRY ALLOWED';
+    result = 'allowed'; message = 'ENROLLED STUDENT — ENTRY ALLOWED';
     await run('UPDATE students SET inside_campus = TRUE WHERE id = $1', [student.id]);
+    student.inside_campus = true;
   }
+
+  let currentSem = student.semester;
+  const rollMatch = student.roll_number && student.roll_number.match(/^(Fa|Sp)-(\d{4})\//i);
+  if (rollMatch) {
+    const startFall = rollMatch[1].toLowerCase() === 'fa';
+    const startYear = parseInt(rollMatch[2]);
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curFall = now.getMonth() >= 7;
+    currentSem = startFall
+      ? (curFall ? (curYear - startYear) * 2 + 1 : (curYear - startYear) * 2)
+      : (curFall ? (curYear - startYear) * 2 + 2 : (curYear - startYear) * 2 + 1);
+    if (currentSem < 1) currentSem = 1;
+  }
+  student.current_semester = currentSem;
 
   await run(
     `INSERT INTO entry_logs (card_uid, student_id, student_name, roll_number, status_at_entry, result, scan_mode, gate_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [student.card_uid || pin, student.id, student.name, student.roll_number, student.status, result, scanMode, gate]
   );
+
+  const { id: _id, card_uid: _cuid, ...safeStudent } = student;
   broadcast('scan', {
-    timestamp: new Date().toISOString(), card_uid: student.card_uid || pin,
-    student_name: student.name, roll_number: student.roll_number,
-    result, mode: scanMode, gate_id: gate, message
+    type: 'scan', timestamp: new Date().toISOString(),
+    found: true, result, message, mode: scanMode, gate_id: gate,
+    student: safeStudent
   });
+
   if (result === 'denied') {
     sendAlert({
       timestamp: new Date().toISOString(),

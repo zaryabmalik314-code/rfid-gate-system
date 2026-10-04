@@ -330,7 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        if (data.type === 'scan') updateEntryCount();
+        if (data.type === 'scan') {
+          updateEntryCount();
+          if (data.gate_id === GATE_ID) showResult(data);
+        }
       } catch (err) {}
     };
     ws.onclose = () => setTimeout(connectWS, 5000);
