@@ -1638,6 +1638,8 @@ async function processAitPunch(pin, deviceName) {
   broadcast('scan', {
     type: 'scan', timestamp: new Date().toISOString(),
     found: true, result, message, mode: scanMode, gate_id: gate,
+    student_name: student.name, roll_number: student.roll_number,
+    department: student.department, photo_url: student.photo_url,
     student: safeStudent
   });
 
