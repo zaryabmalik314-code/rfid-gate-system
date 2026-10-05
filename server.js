@@ -1409,7 +1409,25 @@ app.post('/api/ait/unlink', requireAdmin, async (req, res) => {
 // --- AIT / YUNATT PUSH PROTOCOL ---
 const aitProcessedLogs = new Set();
 const aitPunchCooldown = new Map();
+const aitLastVerdict = new Map();
 const AIT_COOLDOWN_MS = 10000;
+
+// In access-control mode the device blocks on a server verdict before opening.
+// No public spec for this firmware, so send the known field aliases at once —
+// the device ignores the ones it doesn't use. `result` stays true (= request
+// handled); `access`/`opendoor` carry the actual allow/deny.
+function aitAccessResponse(cmd, pin, verdict, extra = {}) {
+  const granted = !verdict || verdict.result === 'allowed';
+  return {
+    ret: cmd,
+    result: true,
+    access: granted ? 1 : 0,
+    opendoor: granted ? 1 : 0,
+    enrollid: pin ? (parseInt(pin, 10) || pin) : undefined,
+    message: verdict ? verdict.message : undefined,
+    ...extra
+  };
+}
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of aitPunchCooldown) if (v < now - 120000) aitPunchCooldown.delete(k);
@@ -1461,18 +1479,21 @@ app.post('/pub/api', async (req, res) => {
     const records = data.record || data.records || [];
     const logArr = Array.isArray(records) ? records : [records];
     console.log(`[ait] Received ${logArr.length} log records`);
-    let processed = 0;
+    let lastPin = '', lastVerdict = null;
     for (const rec of logArr) {
       const pin = String(rec.enrollid || rec.pin || rec.userId || rec.empCode || rec.id || '').toUpperCase();
       if (!pin) continue;
+      lastPin = pin;
       const logKey = `${pin}:${rec.time || rec.logtime}`;
-      if (aitProcessedLogs.has(logKey)) continue;
+      if (aitProcessedLogs.has(logKey)) {
+        lastVerdict = aitLastVerdict.get(pin) || lastVerdict;
+        continue;
+      }
       aitProcessedLogs.add(logKey);
       console.log(`[ait] Log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
-      await processAitPunch(pin);
-      processed++;
+      lastVerdict = await processAitPunch(pin);
     }
-    return res.json({ ret: 'sendlog', result: true, count: logArr.length });
+    return res.json(aitAccessResponse('sendlog', lastPin, lastVerdict, { count: logArr.length }));
   }
 
   // Real-time event push
@@ -1480,8 +1501,8 @@ app.post('/pub/api', async (req, res) => {
     const rec = data.record || data;
     const pin = String(rec.enrollid || rec.pin || rec.userId || rec.empCode || '').toUpperCase();
     console.log(`[ait] Realtime log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
-    if (pin) await processAitPunch(pin);
-    return res.json({ ret: cmd, result: true });
+    const verdict = pin ? await processAitPunch(pin) : null;
+    return res.json(aitAccessResponse(cmd, pin, verdict));
   }
 
   // User sync — store device-enrolled users for admin mapping
@@ -1522,7 +1543,11 @@ app.all('/pub/*', (req, res) => {
 async function processAitPunch(pin) {
   const now = Date.now();
   const lastPunch = aitPunchCooldown.get(pin);
-  if (lastPunch && now - lastPunch < AIT_COOLDOWN_MS) return;
+  // Within cooldown: skip the DB write but replay the verdict, or the device
+  // waits forever for an access decision it already earned seconds ago.
+  if (lastPunch && now - lastPunch < AIT_COOLDOWN_MS) {
+    return aitLastVerdict.get(pin) || { result: 'allowed', message: 'OK' };
+  }
   aitPunchCooldown.set(pin, now);
 
   const student = await queryOne(
@@ -1550,7 +1575,9 @@ async function processAitPunch(pin) {
       type: 'scan', timestamp: new Date().toISOString(), card_uid: pin,
       found: false, result, mode: 'entry', gate_id: gate, message
     });
-    return;
+    const verdict = { result, message };
+    aitLastVerdict.set(pin, verdict);
+    return verdict;
   }
 
   const scanMode = student.inside_campus ? 'exit' : 'entry';
@@ -1613,6 +1640,10 @@ async function processAitPunch(pin) {
       title: message, detail: `${student.name} (${student.roll_number}) — ${message}`
     });
   }
+
+  const verdict = { result, message, name: student.name };
+  aitLastVerdict.set(pin, verdict);
+  return verdict;
 }
 
 // --- ICLOCK / ZKTeco PUSH PROTOCOL (AIT device integration) ---
