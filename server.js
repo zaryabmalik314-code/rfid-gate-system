@@ -1490,8 +1490,8 @@ app.post('/pub/api', async (req, res) => {
         continue;
       }
       aitProcessedLogs.add(logKey);
-      console.log(`[ait] Log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
-      lastVerdict = await processAitPunch(pin);
+      console.log(`[ait] Log: pin=${pin} name=${rec.name} mode=${rec.mode} time=${rec.time || rec.logtime}`);
+      lastVerdict = await processAitPunch(pin, rec.name);
     }
     return res.json(aitAccessResponse('sendlog', lastPin, lastVerdict, { count: logArr.length }));
   }
@@ -1500,8 +1500,8 @@ app.post('/pub/api', async (req, res) => {
   if (cmd === 'sendrtlog' || cmd === 'rtlog') {
     const rec = data.record || data;
     const pin = String(rec.enrollid || rec.pin || rec.userId || rec.empCode || '').toUpperCase();
-    console.log(`[ait] Realtime log: pin=${pin} mode=${rec.mode} time=${rec.time || rec.logtime}`);
-    const verdict = pin ? await processAitPunch(pin) : null;
+    console.log(`[ait] Realtime log: pin=${pin} name=${rec.name} mode=${rec.mode} time=${rec.time || rec.logtime}`);
+    const verdict = pin ? await processAitPunch(pin, rec.name) : null;
     return res.json(aitAccessResponse(cmd, pin, verdict));
   }
 
@@ -1540,21 +1540,32 @@ app.all('/pub/*', (req, res) => {
   res.json({ ret: 'ok', result: true, returnCode: 0 });
 });
 
-async function processAitPunch(pin) {
+async function processAitPunch(pin, deviceName) {
   const now = Date.now();
   const lastPunch = aitPunchCooldown.get(pin);
-  // Within cooldown: skip the DB write but replay the verdict, or the device
-  // waits forever for an access decision it already earned seconds ago.
   if (lastPunch && now - lastPunch < AIT_COOLDOWN_MS) {
     return aitLastVerdict.get(pin) || { result: 'allowed', message: 'OK' };
   }
   aitPunchCooldown.set(pin, now);
 
-  const student = await queryOne(
+  let student = await queryOne(
     `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1 OR ait_pin = $1`,
     [pin]
   );
+
+  // Auto-link: device sends name but ait_pin not set yet — match by name
+  if (!student && deviceName) {
+    student = await queryOne(
+      `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
+       FROM students WHERE UPPER(name) = $1 AND ait_pin IS NULL`,
+      [deviceName.toUpperCase()]
+    );
+    if (student) {
+      await run('UPDATE students SET ait_pin = $1 WHERE id = $2', [pin, student.id]);
+      console.log(`[ait] Auto-linked enrollid=${pin} to student ${student.name} (${student.roll_number})`);
+    }
+  }
   const gate = 'gate4';
   let result, message;
 
