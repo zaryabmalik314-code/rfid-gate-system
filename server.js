@@ -1554,13 +1554,17 @@ async function processAitPunch(pin, deviceName) {
     [pin]
   );
 
-  // Auto-link: device sends name but ait_pin not set yet — match by name
+  // Auto-link: device sends short name (e.g. "ZARYAB"), DB has full name ("Muhammad Zaryab Malik")
   if (!student && deviceName) {
-    student = await queryOne(
-      `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
-       FROM students WHERE UPPER(name) = $1 AND ait_pin IS NULL`,
-      [deviceName.toUpperCase()]
-    );
+    const nameParts = deviceName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length) {
+      const likePattern = '%' + nameParts.map(p => p.toUpperCase()).join('%') + '%';
+      student = await queryOne(
+        `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
+         FROM students WHERE UPPER(name) LIKE $1 AND ait_pin IS NULL LIMIT 1`,
+        [likePattern]
+      );
+    }
     if (student) {
       await run('UPDATE students SET ait_pin = $1 WHERE id = $2', [pin, student.id]);
       console.log(`[ait] Auto-linked enrollid=${pin} to student ${student.name} (${student.roll_number})`);
