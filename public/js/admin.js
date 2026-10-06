@@ -429,6 +429,10 @@ function downloadTemplate() {
   a.click();
 }
 
+function exportStudents() {
+  window.location.href = '/api/students/export?token=' + encodeURIComponent(getToken());
+}
+
 // --- RESET ---
 async function resetCampus() {
   if (!confirm('Reset all students to "outside campus"? This clears the inside_campus flag for everyone.')) return;
