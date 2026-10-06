@@ -1310,6 +1310,20 @@ app.get('/api/register/download', (req, res) => {
   res.download(REGISTER_EXCEL, 'enrolled_students_mapped.xlsx');
 });
 
+app.get('/api/students/export', requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT card_uid, name, roll_number, department, semester, section, status, enrollment_year, expiry_year, phone, cnic, gender
+     FROM students ORDER BY roll_number`
+  );
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Students');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename=students_export.xlsx');
+  res.send(buf);
+});
+
 app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const dataDir = path.join(__dirname, 'data');
