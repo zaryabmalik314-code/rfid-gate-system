@@ -65,6 +65,9 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+const PHOTOS_DIR = path.join(__dirname, 'photos');
+if (!fs.existsSync(PHOTOS_DIR)) fs.mkdirSync(PHOTOS_DIR, { recursive: true });
+app.use('/photos', express.static(PHOTOS_DIR));
 
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 
@@ -1343,6 +1346,30 @@ app.get('/api/students/export', requireAdmin, async (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename=students_export.xlsx');
   res.send(buf);
+});
+
+const photoUpload = multer({ dest: 'uploads/', limits: { fileSize: 5 * 1024 * 1024 } });
+app.post('/api/students/upload-photos', requireAdmin, photoUpload.array('photos', 50), async (req, res) => {
+  if (!req.files || !req.files.length) return res.status(400).json({ error: 'No photos uploaded' });
+  let matched = 0, notFound = 0;
+  const errors = [];
+  for (const file of req.files) {
+    const rollNo = path.basename(file.originalname, path.extname(file.originalname)).trim();
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpeg';
+    const student = await queryOne('SELECT id FROM students WHERE UPPER(roll_number) = $1', [rollNo.toUpperCase()]);
+    if (student) {
+      const dest = path.join(PHOTOS_DIR, `${rollNo}${ext}`);
+      fs.renameSync(file.path, dest);
+      const photoUrl = `/photos/${rollNo}${ext}`;
+      await run('UPDATE students SET photo_url = $1 WHERE id = $2', [photoUrl, student.id]);
+      matched++;
+    } else {
+      errors.push(rollNo);
+      notFound++;
+      fs.unlinkSync(file.path);
+    }
+  }
+  res.json({ success: true, matched, notFound, errors: errors.slice(0, 20), total: req.files.length });
 });
 
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {

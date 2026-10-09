@@ -431,6 +431,13 @@
           <button class="btn-secondary" onclick="downloadTemplate()" style="margin-top:8px">Download Import Template</button>
           <button class="btn-primary" onclick="importFromServer()" style="margin-top:16px;background:var(--green)">Import from Server File (enrolled_students.xlsx)</button>
           <div id="server-import-result" class="import-result hidden"></div>
+          <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+            <h3 style="color:var(--text);margin-bottom:8px">Upload Student Photos</h3>
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px">Select photos named by roll number (e.g. Fa26-BSCS-001.jpeg)</p>
+            <input type="file" id="photo-files" accept="image/*" multiple>
+            <button class="btn-primary" onclick="uploadPhotos()" style="margin-top:8px">Upload Photos</button>
+            <div id="photo-upload-result" class="import-result hidden"></div>
+          </div>
         </div>
       </div>
 

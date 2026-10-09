@@ -433,6 +433,28 @@ function exportStudents() {
   window.location.href = '/api/students/export?token=' + encodeURIComponent(getToken());
 }
 
+async function uploadPhotos() {
+  const files = document.getElementById('photo-files').files;
+  if (!files.length) return alert('Select photos first');
+  const resultDiv = document.getElementById('photo-upload-result');
+  resultDiv.classList.remove('hidden');
+  let totalMatched = 0, totalNotFound = 0, totalErrors = [];
+  const batchSize = 30;
+  for (let i = 0; i < files.length; i += batchSize) {
+    const batch = Array.from(files).slice(i, i + batchSize);
+    const fd = new FormData();
+    batch.forEach(f => fd.append('photos', f));
+    resultDiv.textContent = `Uploading batch ${Math.floor(i/batchSize)+1}/${Math.ceil(files.length/batchSize)} (${i}/${files.length})...`;
+    try {
+      const res = await fetch('/api/students/upload-photos', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() }, body: fd });
+      const data = await res.json();
+      if (data.success) { totalMatched += data.matched; totalNotFound += data.notFound; totalErrors.push(...(data.errors||[])); }
+      else { resultDiv.textContent = 'Error: ' + data.error; return; }
+    } catch(e) { resultDiv.textContent = 'Upload failed: ' + e.message; return; }
+  }
+  resultDiv.textContent = `Done! Matched: ${totalMatched}, Not found: ${totalNotFound}` + (totalErrors.length ? `\nMissing: ${totalErrors.slice(0,10).join(', ')}` : '');
+}
+
 // --- RESET ---
 async function resetCampus() {
   if (!confirm('Reset all students to "outside campus"? This clears the inside_campus flag for everyone.')) return;
