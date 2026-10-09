@@ -586,14 +586,15 @@ app.post('/api/students/import', requireAdmin, upload.single('file'), async (req
 
       try {
         const validStatus = ['active', 'graduated', 'frozen', 'suspended', 'dropped'].includes(status) ? status : 'active';
-        const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
+        const defaultPhoto = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
 
-        const existingRoll = await queryOne('SELECT id FROM students WHERE roll_number = $1', [rollNo]);
+        const existingRoll = await queryOne('SELECT id, photo_url FROM students WHERE roll_number = $1', [rollNo]);
         if (existingRoll) {
+          const keepPhoto = (existingRoll.photo_url && existingRoll.photo_url.startsWith('/photos/')) ? existingRoll.photo_url : defaultPhoto;
           await run(
             `UPDATE students SET name=$1, department=$2, semester=$3, section=$4, status=$5, photo_url=$6,
              enrollment_year=$7, expiry_year=$8, father_name=$9, cnic=$10, phone=$11, gender=$12 WHERE roll_number=$13`,
-            [name, dept || 'Unknown', finalSem, sec, validStatus, photoUrl, enrollYear, expiryYear,
+            [name, dept || 'Unknown', finalSem, sec, validStatus, keepPhoto, enrollYear, expiryYear,
              fatherName, cnic, phone, gender, rollNo]
           );
         } else {
@@ -601,7 +602,7 @@ app.post('/api/students/import', requireAdmin, upload.single('file'), async (req
             `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url,
              enrollment_year, expiry_year, father_name, cnic, phone, gender)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-            [cardUid, name, rollNo, dept || 'Unknown', finalSem, sec, validStatus, photoUrl,
+            [cardUid, name, rollNo, dept || 'Unknown', finalSem, sec, validStatus, defaultPhoto,
              enrollYear, expiryYear, fatherName, cnic, phone, gender]
           );
         }
@@ -1282,13 +1283,14 @@ app.post('/api/register/assign', requireTeam, async (req, res) => {
   const name = exName(student);
   const roll = exRoll(student);
   const dept = exDept(student) || 'Unknown';
-  const gender = student.Gender || '';
-  const phone = student.PhoneMobilePrimary || '';
-  const cnic = student.CNIC || '';
-  const father = student.FatherName || '';
-  const session = student.JoiningSession || '';
-  const enrollYear = session ? parseInt(session.split('-')[0]) || null : null;
-  const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
+  const gender = student.Gender || student.gender || '';
+  const phone = String(student['Mobile No.'] || student.PhoneMobilePrimary || student.phone || '').trim();
+  const cnic = String(student.CNIC || student.cnic || '').trim();
+  const father = exFather(student);
+  const rollMatch = roll.match(/^(Fa|Sp)(\d{2})-/i);
+  const enrollYear = rollMatch ? (parseInt(rollMatch[2]) < 50 ? 2000 + parseInt(rollMatch[2]) : 1900 + parseInt(rollMatch[2])) : null;
+  const photoOnDisk = ['.jpeg','.jpg','.png'].map(e => path.join(PHOTOS_DIR, roll + e)).find(p => fs.existsSync(p));
+  const photoUrl = photoOnDisk ? `/photos/${path.basename(photoOnDisk)}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
 
   try {
     const mappedBy = req.teamMember ? req.teamMember.name : 'admin';
