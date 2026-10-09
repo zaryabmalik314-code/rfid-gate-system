@@ -1184,7 +1184,7 @@ function scheduleNightlyReset() {
 }
 
 // --- CARD REGISTRATION (Excel-based) ---
-const REGISTER_EXCEL = path.join(__dirname, 'data', 'enrolled_students.xlsx');
+const REGISTER_EXCEL = fs.existsSync(PHOTOS_DIR) ? path.join(PHOTOS_DIR, 'enrolled_students.xlsx') : path.join(__dirname, 'data', 'enrolled_students.xlsx');
 
 function loadExcel() {
   if (!fs.existsSync(REGISTER_EXCEL)) return null;
