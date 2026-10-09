@@ -1422,6 +1422,31 @@ app.post('/api/students/sync-photos', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/diagnostics', async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const total = await queryOne('SELECT COUNT(*) as c FROM students');
+    const withCard = await queryOne('SELECT COUNT(*) as c FROM students WHERE card_uid IS NOT NULL');
+    const withPhoto = await queryOne('SELECT COUNT(*) as c FROM students WHERE photo_url LIKE $1', ['/photos/%']);
+    const withAvatar = await queryOne('SELECT COUNT(*) as c FROM students WHERE photo_url LIKE $1', ['https://ui-avatars%']);
+    const noPhoto = await queryOne('SELECT COUNT(*) as c FROM students WHERE photo_url IS NULL');
+    const dups = await pool.query('SELECT roll_number, COUNT(*) as c FROM students GROUP BY roll_number HAVING COUNT(*) > 1');
+    const photoFiles = fs.existsSync(PHOTOS_DIR) ? fs.readdirSync(PHOTOS_DIR).filter(f => /\.(jpeg|jpg|png)$/i.test(f)).length : 0;
+    const excelExists = fs.existsSync(REGISTER_EXCEL);
+    const teams = await pool.query('SELECT id, name FROM team_members');
+    const gates = await pool.query("SELECT DISTINCT gate_id FROM scan_logs ORDER BY gate_id") .catch(() => ({rows:[]}));
+    res.json({
+      students: { total: +total.c, withCard: +withCard.c, withRealPhoto: +withPhoto.c, withAvatarUrl: +withAvatar.c, noPhoto: +noPhoto.c },
+      photos: { filesOnDisk: photoFiles },
+      duplicateRolls: dups.rows,
+      registerExcel: excelExists,
+      teamMembers: teams.rows,
+      activeGates: gates.rows.map(r => r.gate_id)
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
   if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
