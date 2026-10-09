@@ -1359,7 +1359,7 @@ app.post('/api/students/upload-photos', requireAdmin, photoUpload.array('photos'
     const student = await queryOne('SELECT id FROM students WHERE UPPER(roll_number) = $1', [rollNo.toUpperCase()]);
     if (student) {
       const dest = path.join(PHOTOS_DIR, `${rollNo}${ext}`);
-      fs.renameSync(file.path, dest);
+      fs.copyFileSync(file.path, dest); fs.unlinkSync(file.path);
       const photoUrl = `/photos/${rollNo}${ext}`;
       await run('UPDATE students SET photo_url = $1 WHERE id = $2', [photoUrl, student.id]);
       matched++;
@@ -1384,7 +1384,7 @@ app.post('/api/students/bulk-photo-upload', photoUpload.array('photos', 50), asy
     const student = await queryOne('SELECT id FROM students WHERE UPPER(roll_number) = $1', [rollNo.toUpperCase()]);
     if (student) {
       const dest = path.join(PHOTOS_DIR, `${rollNo}${ext}`);
-      fs.renameSync(file.path, dest);
+      fs.copyFileSync(file.path, dest); fs.unlinkSync(file.path);
       await run('UPDATE students SET photo_url = $1 WHERE id = $2', [`/photos/${rollNo}${ext}`, student.id]);
       matched++;
     } else { errors.push(rollNo); notFound++; fs.unlinkSync(file.path); }
