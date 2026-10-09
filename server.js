@@ -1533,6 +1533,63 @@ app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
+app.post('/api/students/import-gate', upload.single('file'), async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+  try {
+    const workbook = XLSX.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    let rows = XLSX.utils.sheet_to_json(sheet);
+    if (rows.length && !rows[0].studentname && !rows[0].name && !rows[0].Name && !rows[0]['Student Name']
+        && !rows[0].StdRollNo && !rows[0].roll_number && !rows[0]['Student Roll No.']) {
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const headerIdx = rawRows.findIndex(r => r && r.length >= 3 &&
+        r.some(c => /roll/i.test(String(c || ''))) && r.some(c => /name/i.test(String(c || ''))));
+      if (headerIdx > 0) {
+        const newSheet = XLSX.utils.aoa_to_sheet(rawRows.slice(headerIdx));
+        rows = XLSX.utils.sheet_to_json(newSheet);
+      }
+    }
+    let imported = 0, uidCounter = 1;
+    const maxUid = await queryOne("SELECT MAX(CAST(SUBSTRING(card_uid FROM 5) AS INTEGER)) as m FROM students WHERE card_uid LIKE 'LGU-%'");
+    if (maxUid && maxUid.m) uidCounter = maxUid.m + 1;
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.studentname || r['Student Name'] || r.name || '').trim();
+      const rollNo = String(r.StdRollNo || r['Student Roll No.'] || r.roll_number || '').trim();
+      const dept = String(r.DegreeID || r.Degree || r.department || '').trim();
+      let cardUid = String(r.card_uid || r.CardUID || '').trim();
+      const fatherName = String(r.FatherName || r['Father Name'] || '').trim() || null;
+      const cnic = String(r.CNIC || r.cnic || '').trim() || null;
+      const phone = String(r['Mobile No.'] || r.PhoneMobilePrimary || r.phone || '').trim() || null;
+      const gender = String(r.Gender || r.gender || '').trim() || null;
+      const sec = String(r['Class Section'] || r.section || 'A').trim();
+      if (!name || !rollNo) { errors.push(`Row ${i+2}: missing name/roll`); continue; }
+      if (!cardUid) { cardUid = `LGU-${String(uidCounter).padStart(5,'0')}`; uidCounter++; }
+      let enrollYear = null, expiryYear = null;
+      const rm = rollNo.match(/^(Fa|Sp)(\d{2})-/i);
+      if (rm) { const yr = parseInt(rm[2]); enrollYear = yr < 50 ? 2000+yr : 1900+yr; expiryYear = enrollYear+4; }
+      const defaultPhoto = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
+      try {
+        const existing = await queryOne('SELECT id, photo_url FROM students WHERE roll_number = $1', [rollNo]);
+        if (existing) {
+          const keepPhoto = (existing.photo_url && existing.photo_url.startsWith('/photos/')) ? existing.photo_url : defaultPhoto;
+          await run('UPDATE students SET name=$1, department=$2, semester=$3, section=$4, photo_url=$5, enrollment_year=$6, expiry_year=$7, father_name=$8, cnic=$9, phone=$10, gender=$11 WHERE roll_number=$12',
+            [name, dept||'Unknown', 1, sec, keepPhoto, enrollYear, expiryYear, fatherName, cnic, phone, gender, rollNo]);
+        } else {
+          await run('INSERT INTO students (card_uid,name,roll_number,department,semester,section,status,photo_url,enrollment_year,expiry_year,father_name,cnic,phone,gender) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+            [cardUid, name, rollNo, dept||'Unknown', 1, sec, 'active', defaultPhoto, enrollYear, expiryYear, fatherName, cnic, phone, gender]);
+        }
+        imported++;
+      } catch (err) { errors.push(`Row ${i+2}: ${err.message}`); }
+    }
+    fs.unlinkSync(req.file.path);
+    res.json({ success: true, imported, total: rows.length, errors: errors.slice(0, 20) });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
 app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const dataDir = path.join(__dirname, 'data');
