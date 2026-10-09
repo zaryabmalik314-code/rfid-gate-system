@@ -1372,6 +1372,26 @@ app.post('/api/students/upload-photos', requireAdmin, photoUpload.array('photos'
   res.json({ success: true, matched, notFound, errors: errors.slice(0, 20), total: req.files.length });
 });
 
+app.post('/api/students/bulk-photo-upload', photoUpload.array('photos', 50), async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.files || !req.files.length) return res.status(400).json({ error: 'No photos' });
+  let matched = 0, notFound = 0;
+  const errors = [];
+  for (const file of req.files) {
+    const rollNo = path.basename(file.originalname, path.extname(file.originalname)).trim();
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpeg';
+    const student = await queryOne('SELECT id FROM students WHERE UPPER(roll_number) = $1', [rollNo.toUpperCase()]);
+    if (student) {
+      const dest = path.join(PHOTOS_DIR, `${rollNo}${ext}`);
+      fs.renameSync(file.path, dest);
+      await run('UPDATE students SET photo_url = $1 WHERE id = $2', [`/photos/${rollNo}${ext}`, student.id]);
+      matched++;
+    } else { errors.push(rollNo); notFound++; fs.unlinkSync(file.path); }
+  }
+  res.json({ success: true, matched, notFound, errors: errors.slice(0, 20), total: req.files.length });
+});
+
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
   if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
