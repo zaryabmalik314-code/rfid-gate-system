@@ -1494,7 +1494,18 @@ app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res)
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const dataDir = path.join(__dirname, 'data');
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  fs.renameSync(req.file.path, REGISTER_EXCEL);
+  fs.copyFileSync(req.file.path, REGISTER_EXCEL); fs.unlinkSync(req.file.path);
+  const wb = loadExcel();
+  res.json({ success: true, stats: getExcelStats(wb) });
+});
+
+app.post('/api/register/upload-gate', upload.single('file'), (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const dataDir = path.join(__dirname, 'data');
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  fs.copyFileSync(req.file.path, REGISTER_EXCEL); fs.unlinkSync(req.file.path);
   const wb = loadExcel();
   res.json({ success: true, stats: getExcelStats(wb) });
 });
