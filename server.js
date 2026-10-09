@@ -1343,6 +1343,89 @@ app.get('/api/students/export', requireAdmin, async (req, res) => {
   res.send(buf);
 });
 
+app.post('/api/students/import-server', requireAdmin, async (req, res) => {
+  const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
+  try {
+    const workbook = XLSX.readFile(filePath);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    let rows = XLSX.utils.sheet_to_json(sheet);
+
+    if (rows.length && !rows[0].studentname && !rows[0].name && !rows[0].Name && !rows[0]['Student Name']
+        && !rows[0].StdRollNo && !rows[0].roll_number && !rows[0]['Student Roll No.']) {
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const headerIdx = rawRows.findIndex(r => r.some && r.some(c => /roll|name|student/i.test(String(c || ''))));
+      if (headerIdx > 0) {
+        const newSheet = XLSX.utils.aoa_to_sheet(rawRows.slice(headerIdx));
+        rows = XLSX.utils.sheet_to_json(newSheet);
+      }
+    }
+
+    let imported = 0;
+    const errors = [];
+    const maxIdRow = await queryOne("SELECT COALESCE(MAX(id), 0) as m FROM students");
+    let uidCounter = parseInt(maxIdRow.m) + 1;
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.studentname || r.name || r.Name || r.STUDENT_NAME || r.student_name || r['Student Name'] || '').trim();
+      const rollNo = String(r.StdRollNo || r.roll_number || r.Roll_Number || r.RollNumber || r.ROLL_NO || r.roll_no || r['Student Roll No.'] || '').trim();
+      const dept = String(r.DegreeID || r.department || r.Department || r.DEPARTMENT || r.dept || r.Degree || '').trim();
+      let cardUid = String(r.card_uid || r.Card_UID || r.CardUID || r.CARD_UID || '').trim();
+      const fatherName = String(r.FatherName || r.father_name || r['Father Name'] || '').trim() || null;
+      const cnic = String(r.CNIC || r.cnic || '').trim() || null;
+      const phone = String(r.PhoneMobilePrimary || r.phone || r.Phone || r['Mobile No.'] || '').trim() || null;
+      const gender = String(r.Gender || r.gender || '').trim() || null;
+      const joiningSession = r.JoiningSession || r.joining_session || '';
+      const sem = parseInt(r.semester || r.Semester || r.SEMESTER || 0);
+      const sec = String(r.section || r.Section || r.SECTION || r['Class Section'] || 'A').trim();
+      const status = String(r.status || r.Status || r.STATUS || 'active').trim().toLowerCase();
+      let enrollYear = parseInt(r.enrollment_year || r.Enrollment_Year || 0) || null;
+      let expiryYear = parseInt(r.expiry_year || r.Expiry_Year || 0) || null;
+
+      if (!name || !rollNo) { errors.push(`Row ${i + 2}: Missing name or roll number`); continue; }
+      if (!cardUid) { cardUid = `LGU-${String(uidCounter).padStart(5, '0')}`; uidCounter++; }
+
+      if (joiningSession && (!enrollYear || !expiryYear)) {
+        const parsed = parseJoiningSession(joiningSession);
+        if (!enrollYear) enrollYear = parsed.enrollYear;
+        if (!expiryYear) expiryYear = parsed.expiryYear;
+      }
+      if (!enrollYear && rollNo) {
+        const rollMatch = rollNo.match(/^(Fa|Sp)(\d{2})-/i);
+        if (rollMatch) {
+          const yr = parseInt(rollMatch[2]);
+          enrollYear = yr < 50 ? 2000 + yr : 1900 + yr;
+          if (!expiryYear) expiryYear = enrollYear + 4;
+        }
+      }
+      const finalSem = sem || (joiningSession ? parseJoiningSession(joiningSession).semester : 1);
+
+      try {
+        const validStatus = ['active', 'graduated', 'frozen', 'suspended', 'dropped'].includes(status) ? status : 'active';
+        const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
+        const existingRoll = await queryOne('SELECT id FROM students WHERE roll_number = $1', [rollNo]);
+        if (existingRoll) {
+          await run(
+            `UPDATE students SET name=$1, department=$2, semester=$3, section=$4, status=$5, photo_url=$6,
+             enrollment_year=$7, expiry_year=$8, father_name=$9, cnic=$10, phone=$11, gender=$12 WHERE roll_number=$13`,
+            [name, dept || 'Unknown', finalSem, sec, validStatus, photoUrl, enrollYear, expiryYear, fatherName, cnic, phone, gender, rollNo]
+          );
+        } else {
+          await run(
+            `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url,
+             enrollment_year, expiry_year, father_name, cnic, phone, gender)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [cardUid, name, rollNo, dept || 'Unknown', finalSem, sec, validStatus, photoUrl, enrollYear, expiryYear, fatherName, cnic, phone, gender]
+          );
+        }
+        imported++;
+      } catch (err) { errors.push(`Row ${i + 2}: ${err.message}`); }
+    }
+    res.json({ success: true, imported, errors: errors.slice(0, 20), total: rows.length });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
 app.post('/api/register/upload', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const dataDir = path.join(__dirname, 'data');
