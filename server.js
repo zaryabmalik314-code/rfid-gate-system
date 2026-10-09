@@ -1411,15 +1411,14 @@ app.post('/api/students/sync-photos', async (req, res) => {
   if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
   try {
     const files = fs.readdirSync(PHOTOS_DIR).filter(f => /\.(jpeg|jpg|png)$/i.test(f));
-    let matched = 0;
+    let updated = 0;
     for (const f of files) {
       const rollNo = path.basename(f, path.extname(f)).trim();
       const photoUrl = `/photos/${f}`;
-      const result = await run('UPDATE students SET photo_url = $1 WHERE UPPER(roll_number) = $2 AND (photo_url IS NULL OR photo_url NOT LIKE $3)',
-        [photoUrl, rollNo.toUpperCase(), '/photos/%']);
-      if (result.rowCount > 0) matched++;
+      const r = await pool.query('UPDATE students SET photo_url = $1 WHERE UPPER(roll_number) = $2', [photoUrl, rollNo.toUpperCase()]);
+      if (r.rowCount > 0) updated++;
     }
-    res.json({ success: true, totalPhotos: files.length, updated: matched });
+    res.json({ success: true, totalPhotos: files.length, updated });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
