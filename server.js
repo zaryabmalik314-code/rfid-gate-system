@@ -517,11 +517,12 @@ app.post('/api/students/import', requireAdmin, upload.single('file'), async (req
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     let rows = XLSX.utils.sheet_to_json(sheet);
 
-    // Skip title rows: if first row has no recognizable columns, try using row 2 as header
+    // Skip title rows: if first row has no recognizable columns, find real header row
     if (rows.length && !rows[0].studentname && !rows[0].name && !rows[0].Name && !rows[0]['Student Name']
         && !rows[0].StdRollNo && !rows[0].roll_number && !rows[0]['Student Roll No.']) {
       const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      const headerIdx = rawRows.findIndex(r => r.some && r.some(c => /roll|name|student/i.test(String(c || ''))));
+      const headerIdx = rawRows.findIndex(r => r && r.length >= 3 &&
+        r.some(c => /roll/i.test(String(c || ''))) && r.some(c => /name/i.test(String(c || ''))));
       if (headerIdx > 0) {
         const newSheet = XLSX.utils.aoa_to_sheet(rawRows.slice(headerIdx));
         rows = XLSX.utils.sheet_to_json(newSheet);
@@ -1354,7 +1355,8 @@ app.post('/api/students/import-server', requireAdmin, async (req, res) => {
     if (rows.length && !rows[0].studentname && !rows[0].name && !rows[0].Name && !rows[0]['Student Name']
         && !rows[0].StdRollNo && !rows[0].roll_number && !rows[0]['Student Roll No.']) {
       const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      const headerIdx = rawRows.findIndex(r => r.some && r.some(c => /roll|name|student/i.test(String(c || ''))));
+      const headerIdx = rawRows.findIndex(r => r && r.length >= 3 &&
+        r.some(c => /roll/i.test(String(c || ''))) && r.some(c => /name/i.test(String(c || ''))));
       if (headerIdx > 0) {
         const newSheet = XLSX.utils.aoa_to_sheet(rawRows.slice(headerIdx));
         rows = XLSX.utils.sheet_to_json(newSheet);
