@@ -1438,10 +1438,12 @@ app.get('/api/diagnostics', async (req, res) => {
     const excelExists = fs.existsSync(REGISTER_EXCEL);
     const teams = await pool.query('SELECT id, name FROM team_members');
     const gates = await pool.query("SELECT DISTINCT gate_id FROM scan_logs ORDER BY gate_id") .catch(() => ({rows:[]}));
+    const realMapped = await pool.query("SELECT name, roll_number, card_uid, mapped_by, mapped_at FROM students WHERE mapped_by IS NOT NULL ORDER BY mapped_at DESC LIMIT 20");
     res.json({
       students: { total: +total.c, withCard: +withCard.c, withRealPhoto: +withPhoto.c, withAvatarUrl: +withAvatar.c, noPhoto: +noPhoto.c },
       photos: { filesOnDisk: photoFiles },
       duplicateRolls: dups.rows,
+      realMapped: realMapped.rows,
       registerExcel: excelExists,
       teamMembers: teams.rows,
       activeGates: gates.rows.map(r => r.gate_id)
