@@ -1406,6 +1406,23 @@ app.post('/api/students/bulk-photo-upload', photoUpload.array('photos', 50), asy
   res.json({ success: true, matched, notFound, errors: errors.slice(0, 20), total: req.files.length });
 });
 
+app.post('/api/students/sync-photos', async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const files = fs.readdirSync(PHOTOS_DIR).filter(f => /\.(jpeg|jpg|png)$/i.test(f));
+    let matched = 0;
+    for (const f of files) {
+      const rollNo = path.basename(f, path.extname(f)).trim();
+      const photoUrl = `/photos/${f}`;
+      const result = await run('UPDATE students SET photo_url = $1 WHERE UPPER(roll_number) = $2 AND (photo_url IS NULL OR photo_url NOT LIKE $3)',
+        [photoUrl, rollNo.toUpperCase(), '/photos/%']);
+      if (result.rowCount > 0) matched++;
+    }
+    res.json({ success: true, totalPhotos: files.length, updated: matched });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
   if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
