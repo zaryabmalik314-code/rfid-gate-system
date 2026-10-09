@@ -1189,15 +1189,31 @@ const REGISTER_EXCEL = path.join(__dirname, 'data', 'enrolled_students.xlsx');
 function loadExcel() {
   if (!fs.existsSync(REGISTER_EXCEL)) return null;
   const wb = XLSX.readFile(REGISTER_EXCEL);
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const testRows = XLSX.utils.sheet_to_json(sheet);
+  if (testRows.length && !testRows[0].StdRollNo && !testRows[0]['Student Roll No.'] && !testRows[0].roll_number) {
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const hdrIdx = rawRows.findIndex(r => r && r.length >= 3 &&
+      r.some(c => /roll/i.test(String(c || ''))) && r.some(c => /name/i.test(String(c || ''))));
+    if (hdrIdx > 0) {
+      const newSheet = XLSX.utils.aoa_to_sheet(rawRows.slice(hdrIdx));
+      wb.Sheets[wb.SheetNames[0]] = newSheet;
+    }
+  }
   return wb;
 }
+
+function exRoll(r) { return String(r.StdRollNo || r['Student Roll No.'] || r.roll_number || '').trim(); }
+function exName(r) { return String(r.studentname || r['Student Name'] || r.name || '').trim(); }
+function exDept(r) { return String(r.DegreeID || r.Degree || r.department || '').trim(); }
+function exFather(r) { return String(r.FatherName || r['Father Name'] || r.father_name || '').trim(); }
 
 function findStudentRow(wb, rollQuery) {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws);
   const q = rollQuery.trim().toUpperCase();
   return rows.find(r => {
-    const roll = String(r.StdRollNo || '').toUpperCase();
+    const roll = exRoll(r).toUpperCase();
     return roll === q || roll.includes(q);
   });
 }
@@ -1225,17 +1241,15 @@ app.get('/api/register/search', requireTeam, (req, res) => {
   const rows = XLSX.utils.sheet_to_json(ws);
   const query = q.trim().toUpperCase();
   const matches = rows.filter(r => {
-    const roll = String(r.StdRollNo || '').toUpperCase();
-    const name = String(r.studentname || '').toUpperCase();
-    return roll.includes(query) || name.includes(query);
+    return exRoll(r).toUpperCase().includes(query) || exName(r).toUpperCase().includes(query);
   }).slice(0, 10);
   res.json(matches.map(r => ({
-    roll: r.StdRollNo,
-    name: r.studentname,
-    father: r.FatherName,
-    degree: r.DegreeID,
-    session: r.JoiningSession,
-    gender: r.Gender,
+    roll: exRoll(r),
+    name: exName(r),
+    father: exFather(r),
+    degree: exDept(r),
+    session: r.JoiningSession || '',
+    gender: r.Gender || r.gender || '',
     cardUid: r.CardUID || null
   })));
 });
@@ -1252,9 +1266,9 @@ app.post('/api/register/assign', requireTeam, async (req, res) => {
   const uid = card_uid.trim().toUpperCase();
 
   const dupUid = rows.find(r => String(r.CardUID || '').toUpperCase() === uid);
-  if (dupUid) return res.status(409).json({ error: `Card UID already assigned to ${dupUid.StdRollNo} (${dupUid.studentname})` });
+  if (dupUid) return res.status(409).json({ error: `Card UID already assigned to ${exRoll(dupUid)} (${exName(dupUid)})` });
 
-  const idx = rows.findIndex(r => String(r.StdRollNo || '').toUpperCase() === q);
+  const idx = rows.findIndex(r => exRoll(r).toUpperCase() === q);
   if (idx === -1) return res.status(404).json({ error: 'Roll number not found in Excel' });
 
   rows[idx].CardUID = uid;
@@ -1265,9 +1279,9 @@ app.post('/api/register/assign', requireTeam, async (req, res) => {
   XLSX.writeFile(wb, REGISTER_EXCEL);
 
   const student = rows[idx];
-  const name = student.studentname || '';
-  const roll = student.StdRollNo || '';
-  const dept = student.DegreeID || 'Unknown';
+  const name = exName(student);
+  const roll = exRoll(student);
+  const dept = exDept(student) || 'Unknown';
   const gender = student.Gender || '';
   const phone = student.PhoneMobilePrimary || '';
   const cnic = student.CNIC || '';
@@ -1305,7 +1319,7 @@ app.post('/api/register/unassign', requireAdmin, (req, res) => {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws);
   const q = roll_number.trim().toUpperCase();
-  const idx = rows.findIndex(r => String(r.StdRollNo || '').toUpperCase() === q);
+  const idx = rows.findIndex(r => exRoll(r).toUpperCase() === q);
   if (idx === -1) return res.status(404).json({ error: 'Roll number not found' });
 
   rows[idx].CardUID = '';
@@ -1322,7 +1336,7 @@ app.get('/api/register/recent', requireTeam, (req, res) => {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws);
   const mapped = rows.filter(r => r.CardUID && String(r.CardUID).trim())
-    .map(r => ({ roll: r.StdRollNo, name: r.studentname, degree: r.DegreeID, cardUid: r.CardUID }));
+    .map(r => ({ roll: exRoll(r), name: exName(r), degree: exDept(r), cardUid: r.CardUID }));
   res.json(mapped);
 });
 
