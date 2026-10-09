@@ -1274,9 +1274,10 @@ app.post('/api/register/assign', requireTeam, async (req, res) => {
   const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random&bold=true`;
 
   try {
+    const mappedBy = req.teamMember ? req.teamMember.name : 'admin';
     const existing = await queryOne('SELECT id FROM students WHERE roll_number = $1', [roll]);
     if (existing) {
-      await run('UPDATE students SET card_uid = $1 WHERE id = $2', [uid, existing.id]);
+      await run('UPDATE students SET card_uid = $1, mapped_by = $2, mapped_at = NOW() WHERE id = $3', [uid, mappedBy, existing.id]);
     } else {
       await run(
         `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, father_name, cnic, phone, gender)
@@ -1332,7 +1333,7 @@ app.get('/api/register/download', (req, res) => {
 
 app.get('/api/students/export', requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT card_uid, name, roll_number, department, semester, section, status, enrollment_year, expiry_year, phone, cnic, gender
+    `SELECT card_uid, name, roll_number, department, semester, section, status, enrollment_year, expiry_year, phone, cnic, gender, mapped_by, mapped_at
      FROM students ORDER BY roll_number`
   );
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1986,6 +1987,8 @@ async function start() {
   try { await pool.query('ALTER TABLE students ADD COLUMN phone TEXT'); } catch(e) {}
   try { await pool.query('ALTER TABLE students ADD COLUMN gender TEXT'); } catch(e) {}
   try { await pool.query('ALTER TABLE students ADD COLUMN ait_pin TEXT'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN mapped_by TEXT'); } catch(e) {}
+  try { await pool.query('ALTER TABLE students ADD COLUMN mapped_at TIMESTAMPTZ'); } catch(e) {}
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_card_uid ON students(card_uid)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_ait_pin ON students(ait_pin)');
