@@ -147,6 +147,26 @@
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     .toast.error { background: var(--red); color: #fff; }
 
+    .search-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+      background: var(--surface); border: 1px solid var(--accent); border-top: none;
+      border-radius: 0 0 8px 8px; max-height: 280px; overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .dd-item {
+      padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .dd-item:last-child { border-bottom: none; }
+    .dd-item:hover, .dd-item.active { background: rgba(59,130,246,0.12); }
+    .dd-item-left { flex: 1; min-width: 0; }
+    .dd-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dd-roll { font-size: 11px; color: var(--accent); font-family: 'Consolas', monospace; }
+    .dd-detail { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .dd-status { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
+    .dd-status.mapped { background: rgba(245,158,11,0.15); color: var(--orange); }
+    .dd-status.ready { background: rgba(34,197,94,0.15); color: var(--green); }
+
     .no-excel-msg {
       text-align: center; padding: 60px 20px; color: var(--muted);
     }
@@ -222,21 +242,22 @@
       </div>
 
       <div class="scan-box">
-        <div class="scan-title">Step 1: Scan Card → Step 2: Type Roll Number</div>
+        <div class="scan-title">Step 1: Scan Card → Step 2: Search Student</div>
         <div class="scan-row">
           <div class="field" style="flex:1">
             <label>Card UID</label>
             <input type="text" id="uid-input" class="uid-input" placeholder="Tap card..." autocomplete="off">
           </div>
-          <div class="field" style="flex:1.5">
-            <label>Roll Number</label>
-            <input type="text" id="roll-input" placeholder="e.g. Fa-2025/BS-CMAI/069" autocomplete="off">
+          <div class="field" style="flex:1.5; position:relative;">
+            <label>Student (Name or Roll No)</label>
+            <input type="text" id="roll-input" placeholder="Type name or roll e.g. Ahmad, BSCS-049, 049..." autocomplete="off">
+            <div class="search-dropdown hidden" id="search-dropdown"></div>
           </div>
         </div>
         <div class="scan-hint">
           <strong>1.</strong> Student taps card → UID fills in &nbsp;
-          <strong>2.</strong> Type roll number, press <strong>Enter</strong> &nbsp;
-          <strong>3.</strong> Verify name, click <strong>ASSIGN</strong>
+          <strong>2.</strong> Type name or roll number &nbsp;
+          <strong>3.</strong> Pick student from list, click <strong>ASSIGN</strong>
         </div>
         <div class="match-box" id="match-box">
           <div class="match-row">
@@ -369,6 +390,10 @@ const rollInput = document.getElementById('roll-input');
 const matchBox = document.getElementById('match-box');
 const matchInfo = document.getElementById('match-info');
 const assignBtn = document.getElementById('assign-btn');
+const dropdown = document.getElementById('search-dropdown');
+
+let searchResults = [];
+let ddIndex = -1;
 
 uidInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); rollInput.focus(); } });
 
@@ -376,31 +401,86 @@ let searchTimeout;
 rollInput.addEventListener('input', () => {
   clearTimeout(searchTimeout);
   const q = rollInput.value.trim();
-  if (q.length < 3) { matchBox.className = 'match-box'; currentMatch = null; return; }
-  searchTimeout = setTimeout(() => searchRoll(q), 300);
+  if (q.length < 2) { hideDropdown(); matchBox.className = 'match-box'; currentMatch = null; return; }
+  searchTimeout = setTimeout(() => searchRoll(q), 250);
 });
+
 rollInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
+  if (e.key === 'ArrowDown') {
     e.preventDefault();
-    if (currentMatch && !currentMatch.cardUid) assignCard();
-    else if (rollInput.value.trim().length >= 3) searchRoll(rollInput.value.trim());
-  }
+    if (searchResults.length) { ddIndex = Math.min(ddIndex + 1, searchResults.length - 1); highlightDD(); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (searchResults.length) { ddIndex = Math.max(ddIndex - 1, 0); highlightDD(); }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (ddIndex >= 0 && searchResults[ddIndex]) { selectStudent(searchResults[ddIndex]); }
+    else if (currentMatch && !currentMatch.cardUid) assignCard();
+  } else if (e.key === 'Escape') { hideDropdown(); }
 });
+
+rollInput.addEventListener('blur', () => { setTimeout(hideDropdown, 200); });
+
+function hideDropdown() { dropdown.classList.add('hidden'); searchResults = []; ddIndex = -1; }
+
+function highlightDD() {
+  dropdown.querySelectorAll('.dd-item').forEach((el, i) => {
+    el.classList.toggle('active', i === ddIndex);
+    if (i === ddIndex) el.scrollIntoView({ block: 'nearest' });
+  });
+}
 
 async function searchRoll(q) {
   const res = await teamFetch('/api/register/search?q=' + encodeURIComponent(q));
   const matches = await res.json();
+  searchResults = matches;
+  ddIndex = -1;
+
   if (!matches.length) {
+    hideDropdown();
     matchBox.className = 'match-box show not-found';
-    matchInfo.innerHTML = '<div class="no-match-text">No student found for "' + esc(q) + '"</div><p style="color:var(--muted);font-size:12px;margin-top:4px">Check the roll number and try again</p>';
+    matchInfo.innerHTML = '<div class="no-match-text">No student found for "' + esc(q) + '"</div><p style="color:var(--muted);font-size:12px;margin-top:4px">Check spelling or try a different search</p>';
     assignBtn.style.display = 'none';
     currentMatch = null;
     return;
   }
-  const m = matches[0];
+
+  if (matches.length === 1) {
+    hideDropdown();
+    selectStudent(matches[0]);
+    return;
+  }
+
+  dropdown.innerHTML = matches.map((m, i) =>
+    '<div class="dd-item" data-idx="' + i + '">' +
+      '<div class="dd-item-left">' +
+        '<div class="dd-name">' + esc(m.name) + '</div>' +
+        '<div class="dd-roll">' + esc(m.roll) + '</div>' +
+        '<div class="dd-detail">' + esc(m.degree) + (m.section ? ' - ' + esc(m.section) : '') + (m.father ? ' | ' + esc(m.father) : '') + '</div>' +
+      '</div>' +
+      '<div class="dd-status ' + (m.cardUid ? 'mapped' : 'ready') + '">' + (m.cardUid ? 'MAPPED' : 'READY') + '</div>' +
+    '</div>'
+  ).join('');
+
+  dropdown.querySelectorAll('.dd-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      selectStudent(searchResults[parseInt(el.dataset.idx)]);
+    });
+  });
+
+  dropdown.classList.remove('hidden');
+  matchBox.className = 'match-box';
+  currentMatch = null;
+}
+
+function selectStudent(m) {
+  hideDropdown();
   currentMatch = m;
+  rollInput.value = m.roll;
+
   let html = '<h3>' + esc(m.name) + '</h3>';
-  html += '<p>' + esc(m.roll) + ' &bull; ' + esc(m.degree) + ' &bull; ' + esc(m.session) + ' &bull; ' + esc(m.gender) + '</p>';
+  html += '<p>' + esc(m.roll) + ' &bull; ' + esc(m.degree) + (m.section ? ' (' + esc(m.section) + ')' : '') + (m.father ? ' &bull; s/o ' + esc(m.father) : '') + '</p>';
   if (m.cardUid) {
     matchBox.className = 'match-box show already';
     html += '<span class="tag tag-taken">Already mapped — Card ' + esc(m.cardUid) + '</span>';

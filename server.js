@@ -1249,7 +1249,7 @@ app.get('/api/register/search', requireTeam, (req, res) => {
     name: exName(r),
     father: exFather(r),
     degree: exDept(r),
-    session: r.JoiningSession || '',
+    section: String(r['Class Section'] || r.section || '').trim(),
     gender: r.Gender || r.gender || '',
     cardUid: r.CardUID || null
   })));
