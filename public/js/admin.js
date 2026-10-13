@@ -90,7 +90,7 @@ function switchTab(tab) {
   if (tab === 'alerts') { initLiveWS(); resetAlertBadge(); loadAlertsFromDB(); }
   if (tab === 'logs') loadLogs();
   if (tab === 'timetable') { loadTimetable(); loadTTDepts(); }
-  if (tab === 'team') { loadTeamMembers(); loadRegExcelStats(); }
+  if (tab === 'team') { loadTeamMembers(); loadRegExcelStats(); loadMappingProgress(); }
   if (tab === 'analytics') loadAnalytics();
   if (tab === 'ait') loadAitUsers();
 }
@@ -1098,6 +1098,40 @@ function closeStudentDetail() {
 }
 
 // --- TEAM MANAGEMENT ---
+async function loadMappingProgress() {
+  try {
+    const res = await authFetch('/api/team/stats');
+    const d = await res.json();
+    const pct = d.total > 0 ? ((d.mapped / d.total) * 100).toFixed(1) : 0;
+    document.getElementById('mapping-cards').innerHTML = `
+      <div style="flex:1;min-width:120px;background:var(--bg);border-radius:10px;padding:14px 18px">
+        <div style="font-size:28px;font-weight:700;color:var(--green)">${d.mapped}</div>
+        <div style="font-size:12px;color:var(--muted)">Mapped</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:var(--bg);border-radius:10px;padding:14px 18px">
+        <div style="font-size:28px;font-weight:700;color:var(--orange)">${d.remaining}</div>
+        <div style="font-size:12px;color:var(--muted)">Remaining</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:var(--bg);border-radius:10px;padding:14px 18px">
+        <div style="font-size:28px;font-weight:700;color:var(--accent)">${pct}%</div>
+        <div style="font-size:12px;color:var(--muted)">Complete</div>
+      </div>
+    `;
+    document.getElementById('mapping-bar').style.width = pct + '%';
+    if (d.byMember.length) {
+      document.getElementById('mapping-table').innerHTML = `
+        <table><thead><tr><th>Team Member</th><th>Cards Mapped</th><th>Share</th></tr></thead>
+        <tbody>${d.byMember.map(m => {
+          const share = d.mapped > 0 ? ((m.count / d.mapped) * 100).toFixed(1) : 0;
+          return `<tr><td><strong>${m.mapped_by}</strong></td><td>${m.count}</td><td>${share}%</td></tr>`;
+        }).join('')}</tbody></table>
+      `;
+    } else {
+      document.getElementById('mapping-table').innerHTML = '<p style="color:var(--muted);font-size:13px">No cards mapped yet.</p>';
+    }
+  } catch (e) { console.error('loadMappingProgress', e); }
+}
+
 async function loadTeamMembers() {
   const res = await authFetch('/api/team/list');
   const members = await res.json();

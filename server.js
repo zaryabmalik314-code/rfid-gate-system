@@ -1675,6 +1675,15 @@ app.delete('/api/team/:id', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/team/stats', requireAdmin, async (req, res) => {
+  try {
+    const total = await queryOne('SELECT COUNT(*) as c FROM students');
+    const mapped = await queryOne("SELECT COUNT(*) as c FROM students WHERE mapped_by IS NOT NULL");
+    const byMember = await pool.query("SELECT mapped_by, COUNT(*) as count FROM students WHERE mapped_by IS NOT NULL GROUP BY mapped_by ORDER BY count DESC");
+    res.json({ total: +total.c, mapped: +mapped.c, remaining: +total.c - +mapped.c, byMember: byMember.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- AIT DEVICE USER MANAGEMENT ---
 app.get('/api/ait/users', requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
