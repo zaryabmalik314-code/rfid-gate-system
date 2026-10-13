@@ -342,19 +342,6 @@ app.post('/api/scan', requireGate, async (req, res) => {
     }
   }
 
-  // Broadcast to all connected WebSocket clients
-  broadcast('scan', {
-    timestamp: new Date().toISOString(),
-    student_name: student.name,
-    roll_number: student.roll_number,
-    department: student.department,
-    photo_url: student.photo_url,
-    result,
-    mode: scanMode,
-    gate_id: gate,
-    message
-  });
-
   // Alert: student entered campus with no classes today
   if (timetable && !timetable.has_classes && scanMode === 'entry' && result === 'allowed') {
     sendAlert({
@@ -404,6 +391,11 @@ app.post('/api/scan', requireGate, async (req, res) => {
   }
 
   const { card_uid: _uid, ...safeStudent } = student;
+  broadcast('scan', {
+    type: 'scan', timestamp: new Date().toISOString(),
+    found: true, result, message, mode: scanMode, gate_id: gate,
+    student: safeStudent
+  });
   res.json({ found: true, result, message, student: safeStudent, mode: scanMode, timetable });
 });
 
@@ -2101,12 +2093,11 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
         [student.card_uid || uid, student.id, student.name, student.roll_number, student.status, result, scanMode, 'gate-4']
       );
 
+      const { card_uid: _cuid2, ...safeStd } = student;
       broadcast('scan', {
-        timestamp: new Date().toISOString(),
-        card_uid: student.card_uid || uid,
-        student_name: student.name,
-        roll_number: student.roll_number,
-        result, mode: scanMode, gate_id: 'gate-4', message
+        type: 'scan', timestamp: new Date().toISOString(),
+        found: true, result, message, mode: scanMode, gate_id: 'gate-4',
+        student: safeStd
       });
 
       // Alert for denied entries
