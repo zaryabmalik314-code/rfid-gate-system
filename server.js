@@ -191,7 +191,7 @@ app.post('/api/scan', requireGate, async (req, res) => {
   const now = Date.now();
 
   const student = await queryOne(
-    `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until
+    `SELECT id, card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, inside_campus, suspended_until, father_name
      FROM students WHERE UPPER(card_uid) = $1 OR UPPER(roll_number) = $1`,
     [uid]
   );

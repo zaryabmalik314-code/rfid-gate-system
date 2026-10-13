@@ -121,7 +121,7 @@ function playBeep(type) {
   }
 }
 
-// --- CLOCK ---
+// --- CLOCK & DATE ---
 function updateClock() {
   const now = new Date();
   const h = now.getHours();
@@ -130,6 +130,13 @@ function updateClock() {
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   document.getElementById('clock').textContent = `${h12}:${m}:${s} ${ampm}`;
+
+  const dateEl = document.getElementById('date-display');
+  if (dateEl) {
+    const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    dateEl.textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  }
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -148,11 +155,45 @@ async function updateEntryCount() {
 updateEntryCount();
 
 // --- SCAN ---
+function showProcessing(show) {
+  const overlay = document.getElementById('processing-overlay');
+  const center = document.querySelector('.k-center');
+  if (show) {
+    overlay.classList.add('active');
+    if (center) center.classList.add('scanning');
+  } else {
+    overlay.classList.remove('active');
+    if (center) center.classList.remove('scanning');
+  }
+}
+
+let lastScanData = null;
+
+function updateLastScan(data) {
+  const el = document.getElementById('last-scan');
+  if (!el || !data) return;
+  const dot = document.getElementById('last-scan-dot');
+  const nameEl = document.getElementById('last-scan-name');
+  const detailEl = document.getElementById('last-scan-detail');
+  const timeEl = document.getElementById('last-scan-time');
+
+  dot.className = 'k-last-scan-dot dot-' + (data.result || 'unknown');
+  nameEl.textContent = data.student ? data.student.name : 'Unknown Card';
+  detailEl.textContent = data.student ? `— ${data.student.roll_number}` : '';
+  const now = new Date();
+  const h = now.getHours() % 12 || 12;
+  const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+  timeEl.textContent = `${h}:${String(now.getMinutes()).padStart(2,'0')} ${ampm}`;
+  el.classList.add('visible');
+}
+
 async function handleScan() {
   const input = document.getElementById('card-input');
   const uid = input.value.trim();
   if (!uid) return;
   input.value = '';
+
+  showProcessing(true);
 
   try {
     const res = await fetch('/api/scan', {
@@ -162,10 +203,15 @@ async function handleScan() {
     });
     const data = await res.json();
     setOnlineStatus(true);
+    showProcessing(false);
+    lastScanData = data;
     showResult(data);
   } catch (err) {
     setOnlineStatus(false);
-    showResult(offlineScan(uid));
+    showProcessing(false);
+    const data = offlineScan(uid);
+    lastScanData = data;
+    showResult(data);
   }
 }
 
@@ -210,6 +256,16 @@ function showResult(data) {
     const displayStatus = data.student.status === 'active' ? 'ENROLLED' : data.student.status.toUpperCase();
     statusBadge.textContent = displayStatus;
     statusBadge.className = 'student-status-badge badge-' + (data.student.status === 'active' ? 'enrolled' : data.student.status);
+
+    // Father name
+    const fatherItem = document.getElementById('father-info-item');
+    const fatherEl = document.getElementById('student-father');
+    if (fatherItem && data.student.father_name) {
+      fatherEl.textContent = data.student.father_name;
+      fatherItem.style.display = '';
+    } else if (fatherItem) {
+      fatherItem.style.display = 'none';
+    }
 
     // Suspension info
     const suspItem = document.getElementById('suspend-info-item');
@@ -268,7 +324,11 @@ function showResult(data) {
   playBeep(data.result);
 
   todayEntries++;
-  document.getElementById('entry-count').textContent = todayEntries;
+  const entryEl = document.getElementById('entry-count');
+  entryEl.textContent = todayEntries;
+  entryEl.classList.remove('pulse');
+  void entryEl.offsetWidth;
+  entryEl.classList.add('pulse');
   updateEntryCount();
 
   countdownFill.style.transition = 'none';
@@ -290,6 +350,7 @@ function resetToIdle() {
   document.getElementById('result-view').classList.add('hidden');
   document.getElementById('app').classList.remove('flash-green', 'flash-red');
   document.getElementById('card-input').focus();
+  updateLastScan(lastScanData);
 }
 
 // --- EVENTS ---

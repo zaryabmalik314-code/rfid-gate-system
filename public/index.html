@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/kiosk.css?v=20">
+  <link rel="stylesheet" href="css/kiosk.css?v=21">
 </head>
 <body>
   <div id="app" class="screen idle-screen">
@@ -30,7 +30,9 @@
             <div class="k-sys">Smart Gate Verification System</div>
           </div>
         </div>
-        <div class="k-topright">
+        <div class="k-topright" style="display:flex;align-items:center;gap:14px">
+          <div class="k-date" id="date-display"></div>
+          <div class="k-live-badge"><div class="k-live-dot"></div>LIVE</div>
           <div class="k-gate" id="gate-badge">AUTO-DETECT</div>
         </div>
       </div>
@@ -63,6 +65,14 @@
             <span>VERIFY</span>
           </button>
         </div>
+      </div>
+
+      <!-- Last scan strip -->
+      <div class="k-last-scan" id="last-scan">
+        <div class="k-last-scan-dot" id="last-scan-dot"></div>
+        <span class="k-last-scan-name" id="last-scan-name"></span>
+        <span id="last-scan-detail"></span>
+        <span class="k-last-scan-time" id="last-scan-time"></span>
       </div>
 
       <!-- Bottom bar -->
@@ -126,6 +136,10 @@
               <span class="info-label">Valid</span>
               <span class="info-value" id="student-validity"></span>
             </div>
+            <div class="info-item" id="father-info-item" style="display:none">
+              <span class="info-label">Father</span>
+              <span class="info-value" id="student-father" style="font-size:16px;font-family:'Inter',sans-serif"></span>
+            </div>
             <div class="info-item" id="suspend-info-item" style="display:none">
               <span class="info-label">Suspended Until</span>
               <span class="info-value" id="student-suspend-until" style="color:var(--red)"></span>
@@ -144,13 +158,19 @@
         <div class="unknown-text">UNREGISTERED CARD</div>
         <div class="unknown-subtext">This card is not recognized by the system</div>
       </div>
-      <input type="text" id="ghost-input" class="ghost-input" autocomplete="off">
+      <input type="text" id="ghost-input" class="ghost-input" autocomplete="off" tabindex="-1">
       <div class="countdown-bar">
         <div class="countdown-fill" id="countdown-fill"></div>
       </div>
     </div>
   </div>
 
-  <script src="js/kiosk.js?v=20"></script>
+  <!-- Processing overlay -->
+  <div class="processing-overlay" id="processing-overlay">
+    <div class="processing-spinner" style="position:relative"></div>
+    <div class="processing-text">VERIFYING</div>
+  </div>
+
+  <script src="js/kiosk.js?v=21"></script>
 </body>
 </html>
