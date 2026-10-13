@@ -3,6 +3,7 @@ let resetTimer = null;
 let todayEntries = 0;
 let isOffline = false;
 let localStudents = null;
+let ownScanLock = 0;
 
 const urlParams = new URLSearchParams(window.location.search);
 const GATE_MODE = urlParams.get('mode') === 'exit' ? 'exit' : 'entry';
@@ -193,7 +194,8 @@ async function handleScan() {
   if (!uid) return;
   input.value = '';
 
-  showProcessing(true);
+  document.getElementById('student-photo').src = '';
+  ownScanLock = Date.now();
 
   try {
     const res = await fetch('/api/scan', {
@@ -203,12 +205,10 @@ async function handleScan() {
     });
     const data = await res.json();
     setOnlineStatus(true);
-    showProcessing(false);
     lastScanData = data;
     showResult(data);
   } catch (err) {
     setOnlineStatus(false);
-    showProcessing(false);
     const data = offlineScan(uid);
     lastScanData = data;
     showResult(data);
@@ -229,6 +229,9 @@ function showResult(data) {
 
   idleView.classList.add('hidden');
   resultView.classList.remove('hidden');
+  resultView.classList.remove('animate-in');
+  void resultView.offsetWidth;
+  resultView.classList.add('animate-in');
 
   const isExit = data.mode === 'exit' && data.result === 'allowed';
   banner.className = 'result-banner ' + (isExit ? 'exit' : data.result);
@@ -238,6 +241,9 @@ function showResult(data) {
 
   if (data.found && data.student) {
     studentCard.classList.remove('hidden');
+    studentCard.classList.remove('animate-in');
+    void studentCard.offsetWidth;
+    studentCard.classList.add('animate-in');
     unknownCard.classList.add('hidden');
 
     document.getElementById('student-photo').src = data.student.photo_url;
@@ -393,7 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = JSON.parse(e.data);
         if (data.type === 'scan') {
           updateEntryCount();
-          if (data.gate_id === GATE_ID) showResult(data);
+          if (data.gate_id === GATE_ID && Date.now() - ownScanLock > 5000) {
+            showResult(data);
+          }
         }
       } catch (err) {}
     };

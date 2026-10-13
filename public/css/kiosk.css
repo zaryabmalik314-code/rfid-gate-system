@@ -944,21 +944,21 @@ html, body {
 .k-last-scan-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 
 /* ===== RESULT TRANSITIONS ===== */
-#result-view {
-  animation: resultSlideIn 0.35s ease-out;
+#result-view.animate-in {
+  animation: resultSlideIn 0.25s ease-out;
 }
 
 @keyframes resultSlideIn {
-  0% { opacity: 0; transform: translateY(20px); }
+  0% { opacity: 0; transform: translateY(12px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
-.student-card {
-  animation: cardFadeIn 0.4s ease-out 0.1s both;
+.student-card.animate-in {
+  animation: cardFadeIn 0.2s ease-out both;
 }
 
 @keyframes cardFadeIn {
-  0% { opacity: 0; transform: scale(0.96); }
+  0% { opacity: 0; transform: scale(0.97); }
   100% { opacity: 1; transform: scale(1); }
 }
 
