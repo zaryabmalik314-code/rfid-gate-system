@@ -409,8 +409,11 @@ app.get('/api/students', requireAdmin, async (req, res) => {
   let paramIdx = 1;
 
   if (search) {
+    let q = search.trim();
+    const rollConvert = q.match(/^(Fa|Sp)-?(\d{4})\/(.+)\/(\d+)$/i);
+    if (rollConvert) q = `${rollConvert[1]}${rollConvert[2].slice(2)}-${rollConvert[3].trim()}-${rollConvert[4]}`;
     where += ` AND (name ILIKE $${paramIdx} OR roll_number ILIKE $${paramIdx} OR card_uid ILIKE $${paramIdx} OR cnic ILIKE $${paramIdx} OR phone ILIKE $${paramIdx} OR father_name ILIKE $${paramIdx})`;
-    params.push(`%${search}%`);
+    params.push(`%${q}%`);
     paramIdx++;
   }
   if (status) {
