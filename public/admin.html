@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=31">
+  <link rel="stylesheet" href="css/admin.css?v=32">
 </head>
 <body>
 
@@ -375,6 +375,36 @@
           <div id="reg-excel-stats" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
           <button class="btn-secondary" onclick="downloadRegExcel()" style="margin-top:10px">Download Mapped Excel</button>
         </div>
+        <div class="import-section" style="border-left:3px solid var(--cyan,#06b6d4)">
+          <div class="import-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan,#06b6d4)" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            <h2>Add New Student</h2>
+          </div>
+          <p>Manually add a student to the system. Card will be auto-generated — map it later via the registration tool.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin-bottom:0"><label>Roll Number *</label><input type="text" id="new-std-roll" placeholder="e.g. Fa26-BSCS-200"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Name *</label><input type="text" id="new-std-name" placeholder="Full Name"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Department *</label><input type="text" id="new-std-dept" placeholder="e.g. BSCS"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Section</label><input type="text" id="new-std-sec" placeholder="e.g. A" maxlength="2"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Semester</label><input type="number" id="new-std-sem" placeholder="1" min="1" max="8" value="1"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Father Name</label><input type="text" id="new-std-father" placeholder="Father's Name"></div>
+          </div>
+          <button class="btn-primary" onclick="addNewStudent()" style="margin-top:12px;height:42px">Add Student</button>
+          <div id="new-std-result" class="import-result hidden" style="margin-top:10px"></div>
+        </div>
+        <div class="import-section" style="border-left:3px solid var(--red)">
+          <div class="import-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h2>Remap Card</h2>
+          </div>
+          <p>Change a student's card UID if they got a new/replacement card.</p>
+          <div class="form-row" style="gap:10px;align-items:flex-end">
+            <div class="form-group" style="flex:1;margin-bottom:0"><label>Roll Number</label><input type="text" id="remap-roll" placeholder="e.g. Fa26-BSCS-127"></div>
+            <div class="form-group" style="flex:1;margin-bottom:0"><label>New Card UID</label><input type="text" id="remap-uid" placeholder="Scan or type card UID"></div>
+            <button class="btn-primary" onclick="remapCard()" style="height:42px;white-space:nowrap">Remap</button>
+          </div>
+          <div id="remap-result" class="import-result hidden" style="margin-top:10px"></div>
+        </div>
         <div class="import-section" style="border-left:3px solid var(--green)">
           <div class="import-header">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -540,6 +570,6 @@
     </div>
   </div>
 
-  <script src="js/admin.js?v=32"></script>
+  <script src="js/admin.js?v=33"></script>
 </body>
 </html>

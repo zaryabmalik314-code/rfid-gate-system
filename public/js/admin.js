@@ -1182,6 +1182,61 @@ async function createTeamMember() {
   }
 }
 
+async function addNewStudent() {
+  const roll = document.getElementById('new-std-roll').value.trim();
+  const name = document.getElementById('new-std-name').value.trim();
+  const dept = document.getElementById('new-std-dept').value.trim();
+  const sec = document.getElementById('new-std-sec').value.trim();
+  const sem = document.getElementById('new-std-sem').value;
+  const father = document.getElementById('new-std-father').value.trim();
+  const result = document.getElementById('new-std-result');
+  if (!roll || !name || !dept) { result.className = 'import-result error'; result.textContent = 'Roll Number, Name, and Department are required'; return; }
+  try {
+    const res = await authFetch('/api/students/add-single', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ roll_number: roll, name, department: dept, section: sec || 'A', semester: sem || 1, father_name: father })
+    });
+    const data = await res.json();
+    if (data.success) {
+      result.className = 'import-result success';
+      result.textContent = `Added ${data.student.name} (${data.student.roll_number}) — Card: ${data.student.card_uid}`;
+      document.getElementById('new-std-roll').value = '';
+      document.getElementById('new-std-name').value = '';
+      document.getElementById('new-std-dept').value = '';
+      document.getElementById('new-std-sec').value = '';
+      document.getElementById('new-std-sem').value = '1';
+      document.getElementById('new-std-father').value = '';
+      if (typeof loadMappingProgress === 'function') loadMappingProgress();
+    } else {
+      result.className = 'import-result error';
+      result.textContent = data.error || 'Failed';
+    }
+  } catch (e) { result.className = 'import-result error'; result.textContent = 'Connection error'; }
+}
+
+async function remapCard() {
+  const roll = document.getElementById('remap-roll').value.trim();
+  const uid = document.getElementById('remap-uid').value.trim();
+  const result = document.getElementById('remap-result');
+  if (!roll || !uid) { result.className = 'import-result error'; result.textContent = 'Roll Number and Card UID required'; return; }
+  try {
+    const res = await authFetch('/api/students/remap-card', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ roll_number: roll, card_uid: uid })
+    });
+    const data = await res.json();
+    if (data.success) {
+      result.className = 'import-result success';
+      result.textContent = `Remapped ${data.student}: ${data.old_uid} → ${data.new_uid}`;
+      document.getElementById('remap-roll').value = '';
+      document.getElementById('remap-uid').value = '';
+    } else {
+      result.className = 'import-result error';
+      result.textContent = data.error || 'Failed';
+    }
+  } catch (e) { result.className = 'import-result error'; result.textContent = 'Connection error'; }
+}
+
 async function deleteTeamMember(id, name) {
   if (!confirm(`Remove team member "${name}"?`)) return;
   await authFetch(`/api/team/${id}`, { method: 'DELETE' });

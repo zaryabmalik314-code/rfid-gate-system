@@ -1470,6 +1470,39 @@ app.post('/api/students/force-card', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/students/add-single', requireAdmin, async (req, res) => {
+  const { name, roll_number, department, section, semester, father_name } = req.body;
+  if (!name || !roll_number || !department) return res.status(400).json({ error: 'name, roll_number, and department are required' });
+  try {
+    const existing = await queryOne('SELECT id FROM students WHERE UPPER(roll_number) = $1', [roll_number.trim().toUpperCase()]);
+    if (existing) return res.status(409).json({ error: 'Student with this roll number already exists' });
+    const rollMatch = roll_number.match(/^(Fa|Sp)(\d{2})-/i);
+    const enrollYear = rollMatch ? (parseInt(rollMatch[2]) < 50 ? 2000 + parseInt(rollMatch[2]) : 1900 + parseInt(rollMatch[2])) : null;
+    const maxUid = await queryOne("SELECT MAX(CAST(SUBSTRING(card_uid FROM 5) AS INTEGER)) as m FROM students WHERE card_uid LIKE 'LGU-%'");
+    const nextUid = `LGU-${String((maxUid?.m || 0) + 1).padStart(5, '0')}`;
+    const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&size=200&background=random&bold=true`;
+    await run(
+      `INSERT INTO students (card_uid, name, roll_number, department, semester, section, status, photo_url, enrollment_year, expiry_year, father_name)
+       VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8, $9, $10)`,
+      [nextUid, name.trim(), roll_number.trim(), department.trim(), parseInt(semester) || 1, (section || 'A').trim(), photoUrl, enrollYear, enrollYear ? enrollYear + 4 : null, (father_name || '').trim() || null]
+    );
+    res.json({ success: true, student: { name: name.trim(), roll_number: roll_number.trim(), card_uid: nextUid } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/students/remap-card', requireAdmin, async (req, res) => {
+  const { roll_number, card_uid } = req.body;
+  if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
+  try {
+    const student = await queryOne('SELECT id, name, card_uid FROM students WHERE UPPER(roll_number) = $1', [roll_number.trim().toUpperCase()]);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    const dup = await queryOne('SELECT roll_number, name FROM students WHERE UPPER(card_uid) = $1 AND id != $2', [card_uid.trim().toUpperCase(), student.id]);
+    if (dup) return res.status(409).json({ error: `Card already assigned to ${dup.name} (${dup.roll_number})` });
+    await run('UPDATE students SET card_uid = $1, mapped_by = COALESCE(mapped_by, $2), mapped_at = NOW() WHERE id = $3', [card_uid.trim().toUpperCase(), 'ADMIN', student.id]);
+    res.json({ success: true, old_uid: student.card_uid, new_uid: card_uid.trim().toUpperCase(), student: student.name });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
   if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
