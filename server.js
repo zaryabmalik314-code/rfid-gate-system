@@ -394,6 +394,8 @@ app.post('/api/scan', requireGate, async (req, res) => {
   broadcast('scan', {
     type: 'scan', timestamp: new Date().toISOString(),
     found: true, result, message, mode: scanMode, gate_id: gate,
+    student_name: student.name, roll_number: student.roll_number,
+    department: student.department, photo_url: student.photo_url,
     student: safeStudent
   });
   res.json({ found: true, result, message, student: safeStudent, mode: scanMode, timetable });
@@ -2119,6 +2121,8 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
       broadcast('scan', {
         type: 'scan', timestamp: new Date().toISOString(),
         found: true, result, message, mode: scanMode, gate_id: 'gate-4',
+        student_name: student.name, roll_number: student.roll_number,
+        department: student.department, photo_url: student.photo_url,
         student: safeStd
       });
 
