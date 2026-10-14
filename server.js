@@ -1446,6 +1446,15 @@ app.get('/api/diagnostics', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/students/unmapped', async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { rows } = await pool.query("SELECT name, roll_number, department, section, father_name FROM students WHERE mapped_by IS NULL ORDER BY department, roll_number");
+    res.json({ count: rows.length, students: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
   if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
