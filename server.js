@@ -1470,7 +1470,7 @@ app.post('/api/students/force-card', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/students/add-single', requireAdmin, async (req, res) => {
+app.post('/api/students/add-single', requireTeam, async (req, res) => {
   const { name, roll_number, department, section, semester, father_name } = req.body;
   if (!name || !roll_number || !department) return res.status(400).json({ error: 'name, roll_number, and department are required' });
   try {
@@ -1490,7 +1490,7 @@ app.post('/api/students/add-single', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/students/remap-card', requireAdmin, async (req, res) => {
+app.post('/api/students/remap-card', requireTeam, async (req, res) => {
   const { roll_number, card_uid } = req.body;
   if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
   try {

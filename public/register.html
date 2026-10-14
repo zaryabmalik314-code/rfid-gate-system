@@ -267,6 +267,32 @@
         </div>
       </div>
 
+      <!-- Add New Student -->
+      <div class="scan-box" style="border-left:3px solid var(--green);margin-top:16px">
+        <div class="scan-title" style="color:var(--green)">Add New Student</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="field"><label>Roll Number *</label><input type="text" id="add-roll" placeholder="e.g. Fa26-BSCS-200"></div>
+          <div class="field"><label>Name *</label><input type="text" id="add-name" placeholder="Full Name"></div>
+          <div class="field"><label>Department *</label><input type="text" id="add-dept" placeholder="e.g. BSCS"></div>
+          <div class="field"><label>Section</label><input type="text" id="add-sec" placeholder="A" maxlength="2"></div>
+          <div class="field"><label>Semester</label><input type="number" id="add-sem" value="1" min="1" max="8"></div>
+          <div class="field"><label>Father Name</label><input type="text" id="add-father" placeholder="Father's Name"></div>
+        </div>
+        <button class="assign-btn" onclick="addStudent()" style="margin-top:10px;background:var(--green)">Add Student</button>
+        <div id="add-result" class="hidden" style="margin-top:8px;padding:8px 12px;border-radius:6px;font-size:13px"></div>
+      </div>
+
+      <!-- Remap Card -->
+      <div class="scan-box" style="border-left:3px solid var(--orange);margin-top:16px">
+        <div class="scan-title" style="color:var(--orange)">Remap Card</div>
+        <div class="scan-row">
+          <div class="field" style="flex:1"><label>Roll Number</label><input type="text" id="remap-roll2" placeholder="e.g. Fa26-BSCS-127"></div>
+          <div class="field" style="flex:1"><label>New Card UID</label><input type="text" id="remap-uid2" placeholder="Tap new card or type UID"></div>
+        </div>
+        <button class="assign-btn" onclick="remapCard2()" style="margin-top:10px;background:var(--orange)">Remap Card</button>
+        <div id="remap-result2" class="hidden" style="margin-top:8px;padding:8px 12px;border-radius:6px;font-size:13px"></div>
+      </div>
+
       <div class="section-title">Recently Mapped</div>
       <div class="table-wrap">
         <table>
@@ -553,6 +579,51 @@ async function loadRecent() {
       '</tr>'
     ).join('');
   } catch (e) {}
+}
+
+async function addStudent() {
+  const roll = document.getElementById('add-roll').value.trim();
+  const name = document.getElementById('add-name').value.trim();
+  const dept = document.getElementById('add-dept').value.trim();
+  const sec = document.getElementById('add-sec').value.trim();
+  const sem = document.getElementById('add-sem').value;
+  const father = document.getElementById('add-father').value.trim();
+  const res_el = document.getElementById('add-result');
+  if (!roll || !name || !dept) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Roll, Name, and Department required'; return; }
+  try {
+    const res = await teamFetch('/api/students/add-single', { method: 'POST', headers: teamHeaders(), body: JSON.stringify({ roll_number: roll, name, department: dept, section: sec || 'A', semester: sem || 1, father_name: father }) });
+    const data = await res.json();
+    if (data.success) {
+      res_el.className = ''; res_el.style.background = 'rgba(34,197,94,0.15)'; res_el.style.color = 'var(--green)';
+      res_el.textContent = 'Added ' + data.student.name + ' (' + data.student.roll_number + ')';
+      ['add-roll','add-name','add-dept','add-sec','add-father'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('add-sem').value = '1';
+      refreshStats();
+    } else {
+      res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)';
+      res_el.textContent = data.error || 'Failed';
+    }
+  } catch (e) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Connection error'; }
+}
+
+async function remapCard2() {
+  const roll = document.getElementById('remap-roll2').value.trim();
+  const uid = document.getElementById('remap-uid2').value.trim();
+  const res_el = document.getElementById('remap-result2');
+  if (!roll || !uid) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Roll Number and Card UID required'; return; }
+  try {
+    const res = await teamFetch('/api/students/remap-card', { method: 'POST', headers: teamHeaders(), body: JSON.stringify({ roll_number: roll, card_uid: uid }) });
+    const data = await res.json();
+    if (data.success) {
+      res_el.className = ''; res_el.style.background = 'rgba(34,197,94,0.15)'; res_el.style.color = 'var(--green)';
+      res_el.textContent = 'Remapped ' + data.student + ': ' + data.old_uid + ' → ' + data.new_uid;
+      document.getElementById('remap-roll2').value = '';
+      document.getElementById('remap-uid2').value = '';
+    } else {
+      res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)';
+      res_el.textContent = data.error || 'Failed';
+    }
+  } catch (e) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Connection error'; }
 }
 
 // Init
