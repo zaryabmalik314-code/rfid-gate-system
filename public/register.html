@@ -628,7 +628,7 @@ document.getElementById('remap-search').addEventListener('input', function() {
     } catch(e) {}
   }, 300);
 });
-document.getElementById('remap-search').addEventListener('blur', () => { setTimeout(() => document.getElementById('remap-dropdown').classList.add('hidden'), 200); });
+document.getElementById('remap-search').addEventListener('blur', () => { setTimeout(() => document.getElementById('remap-dropdown').classList.add('hidden'), 400); });
 
 function selectRemap(roll, name, dept, uid) {
   document.getElementById('remap-roll2').value = roll;
@@ -639,10 +639,19 @@ function selectRemap(roll, name, dept, uid) {
 }
 
 async function remapCard2() {
-  const roll = document.getElementById('remap-roll2').value.trim();
+  let roll = document.getElementById('remap-roll2').value.trim();
   const uid = document.getElementById('remap-uid2').value.trim();
+  const searchVal = document.getElementById('remap-search').value.trim();
   const res_el = document.getElementById('remap-result2');
-  if (!roll || !uid) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Select a student and enter Card UID'; return; }
+  if (!roll && searchVal) {
+    try {
+      const sr = await teamFetch('/api/register/search?q=' + encodeURIComponent(searchVal));
+      const list = await sr.json();
+      if (list.length === 1) { roll = list[0].roll; }
+      else if (list.length > 1) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Multiple matches — pick from dropdown or type exact roll number'; return; }
+    } catch(e) {}
+  }
+  if (!roll || !uid) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Enter student name/roll and Card UID'; return; }
   try {
     const res = await teamFetch('/api/students/remap-card', { method: 'POST', headers: teamHeaders(), body: JSON.stringify({ roll_number: roll, card_uid: uid }) });
     const data = await res.json();
