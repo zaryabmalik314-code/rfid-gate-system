@@ -1470,7 +1470,13 @@ app.post('/api/students/force-card', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/students/add-single', requireTeam, async (req, res) => {
+function requireTeamOrGate(req, res, next) {
+  const bodyToken = req.body && req.body.token;
+  if (bodyToken && GATE_TOKEN && bodyToken === GATE_TOKEN) { req.teamMember = { name: 'GATE-API' }; return next(); }
+  return requireTeam(req, res, next);
+}
+
+app.post('/api/students/add-single', requireTeamOrGate, async (req, res) => {
   const { name, roll_number, department, section, semester, father_name } = req.body;
   if (!name || !roll_number || !department) return res.status(400).json({ error: 'name, roll_number, and department are required' });
   try {
