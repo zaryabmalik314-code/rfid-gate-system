@@ -939,8 +939,11 @@ function renderAlertToFeed(data) {
   const el = document.createElement('div');
   el.className = `alert-entry severity-${data.severity}`;
   el.dataset.type = data.alert_type;
+  const photoHtml = data.photo_url
+    ? `<img src="${data.photo_url}" class="alert-photo" alt="" onerror="this.outerHTML='<div class=\\'alert-icon ${data.severity}\\'>${icons[data.alert_type] || '⚠️'}</div>'">`
+    : `<div class="alert-icon ${data.severity}">${icons[data.alert_type] || '⚠️'}</div>`;
   el.innerHTML = `
-    <div class="alert-icon ${data.severity}">${icons[data.alert_type] || '⚠️'}</div>
+    ${photoHtml}
     <div class="alert-info">
       <div class="alert-title">${data.title}</div>
       <div class="alert-detail">${data.detail} — ${gateLabel}</div>
