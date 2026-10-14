@@ -1473,6 +1473,19 @@ app.get('/api/students/unmapped', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/students/force-roll', async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token || req.body.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  const { old_roll, new_roll } = req.body;
+  if (!old_roll || !new_roll) return res.status(400).json({ error: 'old_roll and new_roll required' });
+  try {
+    const student = await queryOne('SELECT id, name FROM students WHERE UPPER(roll_number) = $1', [old_roll.trim().toUpperCase()]);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    await run('UPDATE students SET roll_number = $1 WHERE id = $2', [new_roll.trim(), student.id]);
+    res.json({ success: true, id: student.id, name: student.name, old_roll, new_roll: new_roll.trim() });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/students/force-card', async (req, res) => {
   const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token || req.body.token;
   if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
