@@ -1455,6 +1455,19 @@ app.get('/api/students/unmapped', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/students/force-card', async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token || req.body.token;
+  if (!token || token !== GATE_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  const { roll_number, card_uid } = req.body;
+  if (!roll_number || !card_uid) return res.status(400).json({ error: 'roll_number and card_uid required' });
+  try {
+    const student = await queryOne('SELECT id, name, card_uid FROM students WHERE UPPER(roll_number) = $1', [roll_number.trim().toUpperCase()]);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    await run('UPDATE students SET card_uid = $1, mapped_by = COALESCE(mapped_by, $2), mapped_at = NOW() WHERE id = $3', [card_uid.trim().toUpperCase(), 'ADMIN-FORCE', student.id]);
+    res.json({ success: true, old_uid: student.card_uid, new_uid: card_uid.trim().toUpperCase(), student: student.name });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/students/import-server', requireAdmin, async (req, res) => {
   const filePath = path.join(__dirname, 'data', 'enrolled_students.xlsx');
   if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'No server file found at data/enrolled_students.xlsx' });
