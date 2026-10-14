@@ -1230,26 +1230,39 @@ app.get('/api/register/stats', (req, res) => {
   res.json(getExcelStats(wb));
 });
 
-app.get('/api/register/search', requireTeam, (req, res) => {
+app.get('/api/register/search', requireTeam, async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
+  let query = q.trim().toUpperCase();
+  const rollConvert = query.match(/^(FA|SP)-?(\d{4})\/(.+)\/(\d+)$/i);
+  if (rollConvert) query = `${rollConvert[1]}${rollConvert[2].slice(2)}-${rollConvert[3].trim()}-${rollConvert[4]}`.toUpperCase();
+
+  let matches = [];
   const wb = loadExcel();
-  if (!wb) return res.status(404).json({ error: 'Excel file not found' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws);
-  const query = q.trim().toUpperCase();
-  const matches = rows.filter(r => {
-    return exRoll(r).toUpperCase().includes(query) || exName(r).toUpperCase().includes(query);
-  }).slice(0, 10);
-  res.json(matches.map(r => ({
-    roll: exRoll(r),
-    name: exName(r),
-    father: exFather(r),
-    degree: exDept(r),
-    section: String(r['Class Section'] || r.section || '').trim(),
-    gender: r.Gender || r.gender || '',
-    cardUid: r.CardUID || null
-  })));
+  if (wb) {
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws);
+    matches = rows.filter(r => exRoll(r).toUpperCase().includes(query) || exName(r).toUpperCase().includes(query))
+      .slice(0, 10).map(r => ({
+        roll: exRoll(r), name: exName(r), father: exFather(r), degree: exDept(r),
+        section: String(r['Class Section'] || r.section || '').trim(),
+        gender: r.Gender || r.gender || '', cardUid: r.CardUID || null
+      }));
+  }
+  if (matches.length < 10) {
+    const existingRolls = new Set(matches.map(m => m.roll.toUpperCase()));
+    const dbRows = await pool.query(
+      `SELECT name, roll_number, department, section, father_name, card_uid FROM students
+       WHERE (UPPER(name) LIKE $1 OR UPPER(roll_number) LIKE $1) LIMIT 10`,
+      [`%${query}%`]
+    );
+    for (const r of dbRows.rows) {
+      if (!existingRolls.has(r.roll_number.toUpperCase())) {
+        matches.push({ roll: r.roll_number, name: r.name, father: r.father_name || '', degree: r.department, section: r.section || '', gender: '', cardUid: r.card_uid });
+      }
+    }
+  }
+  res.json(matches.slice(0, 10));
 });
 
 app.post('/api/register/assign', requireTeam, async (req, res) => {
