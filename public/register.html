@@ -286,9 +286,15 @@
       <div class="scan-box" style="border-left:3px solid var(--orange);margin-top:16px">
         <div class="scan-title" style="color:var(--orange)">Remap Card</div>
         <div class="scan-row">
-          <div class="field" style="flex:1"><label>Roll Number</label><input type="text" id="remap-roll2" placeholder="e.g. Fa26-BSCS-127"></div>
+          <div class="field" style="flex:1;position:relative">
+            <label>Search Student (Name or Roll)</label>
+            <input type="text" id="remap-search" placeholder="Type name or roll..." autocomplete="off">
+            <div class="search-dropdown hidden" id="remap-dropdown"></div>
+          </div>
           <div class="field" style="flex:1"><label>New Card UID</label><input type="text" id="remap-uid2" placeholder="Tap new card or type UID"></div>
         </div>
+        <div id="remap-selected" class="hidden" style="margin-top:8px;padding:10px 14px;background:var(--surface2);border:1px solid var(--orange);border-radius:8px;font-size:13px"></div>
+        <input type="hidden" id="remap-roll2">
         <button class="assign-btn" onclick="remapCard2()" style="margin-top:10px;background:var(--orange)">Remap Card</button>
         <div id="remap-result2" class="hidden" style="margin-top:8px;padding:8px 12px;border-radius:6px;font-size:13px"></div>
       </div>
@@ -606,11 +612,37 @@ async function addStudent() {
   } catch (e) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Connection error'; }
 }
 
+let remapTimer = null;
+document.getElementById('remap-search').addEventListener('input', function() {
+  clearTimeout(remapTimer);
+  const q = this.value.trim();
+  const dd = document.getElementById('remap-dropdown');
+  if (q.length < 2) { dd.classList.add('hidden'); return; }
+  remapTimer = setTimeout(async () => {
+    try {
+      const res = await teamFetch('/api/register/search?q=' + encodeURIComponent(q));
+      const list = await res.json();
+      if (!list.length) { dd.innerHTML = '<div style="padding:10px;color:var(--muted)">No match</div>'; dd.classList.remove('hidden'); return; }
+      dd.innerHTML = list.map(s => `<div class="search-item" onclick="selectRemap('${esc(s.roll)}','${esc(s.name)}','${esc(s.degree)}','${esc(s.cardUid || '')}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border)"><strong>${esc(s.name)}</strong> <span style="color:var(--muted);font-size:12px">${esc(s.roll)} • ${esc(s.degree)}</span>${s.cardUid ? '<span style="color:var(--orange);font-size:11px;margin-left:6px">UID: '+esc(s.cardUid)+'</span>' : ''}</div>`).join('');
+      dd.classList.remove('hidden');
+    } catch(e) {}
+  }, 300);
+});
+document.getElementById('remap-search').addEventListener('blur', () => { setTimeout(() => document.getElementById('remap-dropdown').classList.add('hidden'), 200); });
+
+function selectRemap(roll, name, dept, uid) {
+  document.getElementById('remap-roll2').value = roll;
+  document.getElementById('remap-search').value = name + ' — ' + roll;
+  document.getElementById('remap-dropdown').classList.add('hidden');
+  const sel = document.getElementById('remap-selected');
+  sel.className = ''; sel.innerHTML = `<strong>${esc(name)}</strong> • ${esc(roll)} • ${esc(dept)}${uid ? ' • Current UID: <code style="color:var(--orange)">'+esc(uid)+'</code>' : ''}`;
+}
+
 async function remapCard2() {
   const roll = document.getElementById('remap-roll2').value.trim();
   const uid = document.getElementById('remap-uid2').value.trim();
   const res_el = document.getElementById('remap-result2');
-  if (!roll || !uid) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Roll Number and Card UID required'; return; }
+  if (!roll || !uid) { res_el.className = ''; res_el.style.background = 'rgba(239,68,68,0.15)'; res_el.style.color = 'var(--red)'; res_el.textContent = 'Select a student and enter Card UID'; return; }
   try {
     const res = await teamFetch('/api/students/remap-card', { method: 'POST', headers: teamHeaders(), body: JSON.stringify({ roll_number: roll, card_uid: uid }) });
     const data = await res.json();
