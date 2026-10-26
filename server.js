@@ -19,7 +19,9 @@ const aitDeviceSockets = new Map(); // SN -> ws
 
 server.on('upgrade', (req, socket, head) => {
   const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+  console.log(`[ws-upgrade] WebSocket upgrade request: path=${pathname} ip=${req.socket.remoteAddress} headers=${JSON.stringify({host: req.headers.host, origin: req.headers.origin, 'user-agent': req.headers['user-agent']})}`);
   if (pathname === '/pub/chat') {
+    console.log(`[ws-upgrade] AIT device WebSocket connection accepted at /pub/chat`);
     aitWss.handleUpgrade(req, socket, head, ws => aitWss.emit('connection', ws, req));
   } else {
     let token = '';
@@ -183,9 +185,10 @@ wss.on('connection', (ws) => {
 });
 
 // --- AIT DEVICE WEBSOCKET (/pub/chat) ---
-aitWss.on('connection', (ws) => {
+aitWss.on('connection', (ws, req) => {
   let deviceSn = null;
-  ws.on('error', () => {});
+  console.log(`[ait-ws] New WebSocket connection from ${req.socket.remoteAddress}`);
+  ws.on('error', (err) => { console.log(`[ait-ws] WebSocket error: ${err.message}`); });
 
   ws.on('message', async (raw) => {
     let data;
@@ -1966,35 +1969,14 @@ app.post('/pub/api', async (req, res) => {
     });
   }
 
-  // Heartbeat / keepalive — also deliver pending commands
+  // Heartbeat / keepalive — commands can ONLY be delivered via WebSocket, not HTTP
   if (cmd === 'checklive') {
     const key = sn.toUpperCase();
     const queue = deviceCmdQueue.get(key);
     if (queue && queue.length > 0) {
-      const item = queue.shift();
-      console.log(`[ait] Delivering command to ${sn}: ${item.cmd.substring(0, 100)}`);
-      // Parse USERINFO command into JSON fields
-      const m = item.cmd.match(/DATA UPDATE USERINFO (.+)/);
-      if (m) {
-        const fields = {};
-        m[1].split('\t').forEach(p => { const [k, ...v] = p.split('='); fields[k] = v.join('='); });
-        return res.json({
-          ret: 'checklive',
-          result: true,
-          cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          cmd: 'setuserinfo',
-          count: queue.length,
-          record: { enrollid: fields.PIN || '', name: fields.Name || '', backupnum: '0', admin: fields.Pri || '0', record: '' }
-        });
-      }
-      // Pass other commands as-is
-      return res.json({
-        ret: 'checklive',
-        result: true,
-        cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        cmd: item.cmd
-      });
+      console.log(`[ait] Device ${sn} has ${queue.length} pending commands but is on HTTP — switch device to WebSocket mode to deliver`);
     }
+    aitHttpDevices.add(key);
     return res.json({
       ret: 'checklive',
       result: true,
@@ -2357,6 +2339,7 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
 });
 
 // --- DEVICE COMMAND QUEUE ---
+const aitHttpDevices = new Set(); // SNs seen via HTTP /pub/api
 const deviceCmdQueue = new Map(); // SN -> [{id, cmd}]
 let cmdIdCounter = 1;
 
@@ -2435,9 +2418,12 @@ app.post('/api/ait/command', requireAdmin, async (req, res) => {
 // Check command queue status — GET /api/ait/queue
 app.get('/api/ait/queue', requireAdmin, (req, res) => {
   const sn = AIT_DEVICE_SN[0];
-  const queue = sn ? (deviceCmdQueue.get(sn.toUpperCase()) || []) : [];
-  const wsConnected = sn ? aitDeviceSockets.has(sn.toUpperCase()) : false;
-  res.json({ device: sn, pending: queue.length, wsConnected, commands: queue.slice(0, 50) });
+  const key = sn ? sn.toUpperCase() : '';
+  const queue = key ? (deviceCmdQueue.get(key) || []) : [];
+  const wsConnected = key ? aitDeviceSockets.has(key) : false;
+  const httpConnected = key ? aitHttpDevices.has(key) : false;
+  const connectionMode = wsConnected ? 'websocket' : httpConnected ? 'http-only (cannot push commands)' : 'disconnected';
+  res.json({ device: sn, pending: queue.length, wsConnected, connectionMode, commands: queue.slice(0, 50) });
 });
 
 // Force flush queue via WebSocket — POST /api/ait/flush
