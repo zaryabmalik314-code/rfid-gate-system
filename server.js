@@ -2217,10 +2217,87 @@ app.post('/iclock/cdata', iclockRaw, async (req, res) => {
   res.send('OK');
 });
 
+// --- DEVICE COMMAND QUEUE ---
+const deviceCmdQueue = new Map(); // SN -> [{id, cmd}]
+let cmdIdCounter = 1;
+
+function queueDeviceCmd(sn, cmd) {
+  const key = sn.toUpperCase();
+  if (!deviceCmdQueue.has(key)) deviceCmdQueue.set(key, []);
+  const id = cmdIdCounter++;
+  deviceCmdQueue.get(key).push({ id, cmd });
+  return id;
+}
+
 // Device polls for commands — GET /iclock/getrequest?SN=xxx
 app.get('/iclock/getrequest', (req, res) => {
+  const sn = (req.query.SN || req.query.sn || '').toUpperCase();
+  const queue = deviceCmdQueue.get(sn);
   res.set('Content-Type', 'text/plain');
-  res.send('OK');
+  if (queue && queue.length > 0) {
+    const batch = queue.splice(0, 20);
+    const lines = batch.map(c => `C:${c.id}:${c.cmd}`);
+    console.log(`[iclock] Sending ${batch.length} commands to ${sn}`);
+    res.send(lines.join('\r\n') + '\r\n');
+  } else {
+    res.send('OK');
+  }
+});
+
+// Push users to device — POST /api/ait/push-users
+app.post('/api/ait/push-users', requireAdmin, async (req, res) => {
+  const { student_ids, all } = req.body;
+  const sn = AIT_DEVICE_SN[0];
+  if (!sn) return res.status(400).json({ error: 'No AIT device configured' });
+
+  let students;
+  if (all) {
+    const { rows } = await pool.query('SELECT id, name, roll_number, card_uid FROM students WHERE status = $1', ['active']);
+    students = rows;
+  } else if (student_ids && student_ids.length) {
+    const { rows } = await pool.query('SELECT id, name, roll_number, card_uid FROM students WHERE id = ANY($1)', [student_ids]);
+    students = rows;
+  } else {
+    return res.status(400).json({ error: 'Provide student_ids array or all: true' });
+  }
+
+  let queued = 0;
+  for (const s of students) {
+    const pin = s.id;
+    const name = (s.name || '').substring(0, 24);
+    const card = s.card_uid || '';
+    queueDeviceCmd(sn, `DATA UPDATE USERINFO PIN=${pin}\tName=${name}\tCard=${card}\tPri=0`);
+    queued++;
+  }
+  console.log(`[ait-push] Queued ${queued} USERINFO commands for device ${sn}`);
+  res.json({ success: true, queued, device: sn });
+});
+
+// Delete user from device — POST /api/ait/delete-user
+app.post('/api/ait/delete-user', requireAdmin, async (req, res) => {
+  const { pin } = req.body;
+  const sn = AIT_DEVICE_SN[0];
+  if (!sn) return res.status(400).json({ error: 'No AIT device configured' });
+  if (!pin) return res.status(400).json({ error: 'pin required' });
+  const id = queueDeviceCmd(sn, `DATA DEL USERINFO PIN=${pin}`);
+  res.json({ success: true, cmdId: id });
+});
+
+// Send raw command to device — POST /api/ait/command
+app.post('/api/ait/command', requireAdmin, async (req, res) => {
+  const { command } = req.body;
+  const sn = AIT_DEVICE_SN[0];
+  if (!sn) return res.status(400).json({ error: 'No AIT device configured' });
+  if (!command) return res.status(400).json({ error: 'command required' });
+  const id = queueDeviceCmd(sn, command);
+  res.json({ success: true, cmdId: id, device: sn });
+});
+
+// Check command queue status — GET /api/ait/queue
+app.get('/api/ait/queue', requireAdmin, (req, res) => {
+  const sn = AIT_DEVICE_SN[0];
+  const queue = sn ? (deviceCmdQueue.get(sn.toUpperCase()) || []) : [];
+  res.json({ device: sn, pending: queue.length, commands: queue.slice(0, 50) });
 });
 
 // Device sends operation logs — POST /iclock/devicecmd?SN=xxx
