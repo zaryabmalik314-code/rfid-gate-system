@@ -1969,14 +1969,35 @@ app.post('/pub/api', async (req, res) => {
     });
   }
 
-  // Heartbeat / keepalive — commands can ONLY be delivered via WebSocket, not HTTP
+  // Heartbeat / keepalive — try delivering queued commands via HTTP response
   if (cmd === 'checklive') {
     const key = sn.toUpperCase();
+    aitHttpDevices.add(key);
     const queue = deviceCmdQueue.get(key);
     if (queue && queue.length > 0) {
-      console.log(`[ait] Device ${sn} has ${queue.length} pending commands but is on HTTP — switch device to WebSocket mode to deliver`);
+      const batch = queue.splice(0, 1);
+      const item = batch[0];
+      const m = item.cmd.match(/DATA UPDATE USERINFO (.+)/);
+      if (m) {
+        const fields = {};
+        m[1].split('\t').forEach(p => { const [k, ...v] = p.split('='); fields[k] = v.join('='); });
+        console.log(`[ait] HTTP-push attempt: setuserinfo enrollid=${fields.PIN} name=${fields.Name} (${queue.length} remaining)`);
+        return res.json({
+          ret: 'setuserinfo',
+          result: true,
+          cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          cmd: 'setuserinfo',
+          enrollid: parseInt(fields.PIN) || 0,
+          name: fields.Name || '',
+          backupnum: 0,
+          admin: parseInt(fields.Pri) || 0,
+          record: '',
+          enable: 1
+        });
+      } else {
+        queue.unshift(item);
+      }
     }
-    aitHttpDevices.add(key);
     return res.json({
       ret: 'checklive',
       result: true,
