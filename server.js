@@ -1854,8 +1854,35 @@ app.post('/pub/api', async (req, res) => {
     });
   }
 
-  // Heartbeat / keepalive
+  // Heartbeat / keepalive — also deliver pending commands
   if (cmd === 'checklive') {
+    const key = sn.toUpperCase();
+    const queue = deviceCmdQueue.get(key);
+    if (queue && queue.length > 0) {
+      const item = queue.shift();
+      console.log(`[ait] Delivering command to ${sn}: ${item.cmd.substring(0, 100)}`);
+      // Parse USERINFO command into JSON fields
+      const m = item.cmd.match(/DATA UPDATE USERINFO (.+)/);
+      if (m) {
+        const fields = {};
+        m[1].split('\t').forEach(p => { const [k, ...v] = p.split('='); fields[k] = v.join('='); });
+        return res.json({
+          ret: 'checklive',
+          result: true,
+          cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          cmd: 'setuserinfo',
+          count: queue.length,
+          record: { enrollid: fields.PIN || '', name: fields.Name || '', backupnum: '0', admin: fields.Pri || '0', record: '' }
+        });
+      }
+      // Pass other commands as-is
+      return res.json({
+        ret: 'checklive',
+        result: true,
+        cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        cmd: item.cmd
+      });
+    }
     return res.json({
       ret: 'checklive',
       result: true,
