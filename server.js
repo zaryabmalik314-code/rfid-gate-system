@@ -12,17 +12,25 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 // WS broadcasts carry live student PII — require an admin session or the gate token
-const wss = new WebSocketServer({
-  server,
-  verifyClient: (info, cb) => {
+const wss = new WebSocketServer({ noServer: true });
+// AIT device WebSocket at /pub/chat — no auth, device identifies by SN
+const aitWss = new WebSocketServer({ noServer: true });
+const aitDeviceSockets = new Map(); // SN -> ws
+
+server.on('upgrade', (req, socket, head) => {
+  const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+  if (pathname === '/pub/chat') {
+    aitWss.handleUpgrade(req, socket, head, ws => aitWss.emit('connection', ws, req));
+  } else {
     let token = '';
-    try {
-      token = new URL(info.req.url, `http://${info.req.headers.host}`).searchParams.get('token') || '';
-    } catch (e) {}
+    try { token = new URL(req.url, `http://${req.headers.host}`).searchParams.get('token') || ''; } catch (e) {}
     const session = adminSessions.get(token);
     const isAdmin = session && session.expires > Date.now();
-    if (isAdmin || (GATE_TOKEN && safeEqual(token, GATE_TOKEN))) return cb(true);
-    cb(false, 401, 'Unauthorized');
+    if (isAdmin || (GATE_TOKEN && safeEqual(token, GATE_TOKEN))) {
+      wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+    } else {
+      socket.destroy();
+    }
   }
 });
 const PORT = process.env.PORT || 4000;
@@ -173,6 +181,110 @@ function sendAlert(data) {
 wss.on('connection', (ws) => {
   ws.on('error', () => {});
 });
+
+// --- AIT DEVICE WEBSOCKET (/pub/chat) ---
+aitWss.on('connection', (ws) => {
+  let deviceSn = null;
+  ws.on('error', () => {});
+
+  ws.on('message', async (raw) => {
+    let data;
+    try { data = JSON.parse(raw); } catch { return; }
+    const cmd = data.cmd;
+    const sn = data.sn || '';
+    if (sn && !deviceSn) {
+      deviceSn = sn.toUpperCase();
+      aitDeviceSockets.set(deviceSn, ws);
+      console.log(`[ait-ws] Device ${deviceSn} connected via WebSocket`);
+    }
+
+    if (cmd === 'reg') {
+      console.log(`[ait-ws] Device ${sn} registering — model=${data.devinfo?.modelname} fw=${data.devinfo?.firmware}`);
+      ws.send(JSON.stringify({
+        ret: 'reg', sn, result: true,
+        cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        nosenduser: true, nosendlog: 0, tryseconds: 120, realtime: 1, transinterval: 1
+      }));
+      ws.send(JSON.stringify({ cmd: 'settime', cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19) }));
+      // Flush any pending commands
+      aitFlushQueue(sn, ws);
+      return;
+    }
+
+    if (cmd === 'checklive') {
+      ws.send(JSON.stringify({
+        ret: 'checklive', result: true,
+        cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      }));
+      aitFlushQueue(sn, ws);
+      return;
+    }
+
+    if (cmd === 'sendlog' || cmd === 'sendrtlog' || cmd === 'rtlog') {
+      const records = data.record || data.records || [];
+      const logArr = Array.isArray(records) ? records : [records];
+      console.log(`[ait-ws] ${cmd} from ${sn}: ${logArr.length} records`);
+      for (const rec of logArr) {
+        const pin = String(rec.enrollid || rec.pin || '').toUpperCase();
+        if (!pin) continue;
+        const logKey = `${pin}:${rec.time || rec.logtime}`;
+        if (aitProcessedLogs.has(logKey)) continue;
+        aitProcessedLogs.add(logKey);
+        await processAitPunch(pin, rec.name);
+      }
+      ws.send(JSON.stringify({ ret: cmd, result: true, cloudtime: new Date().toISOString().replace('T', ' ').substring(0, 19), access: 1 }));
+      return;
+    }
+
+    if (cmd === 'senduser' || cmd === 'senduserinfo') {
+      const enrollid = String(data.enrollid || '');
+      const name = data.name || '';
+      if (enrollid) {
+        try {
+          await run(
+            `INSERT INTO ait_users (enrollid, name, device_sn, synced_at) VALUES ($1, $2, $3, NOW())
+             ON CONFLICT (enrollid) DO UPDATE SET name = $2, device_sn = $3, synced_at = NOW()`,
+            [enrollid, name, sn]
+          );
+        } catch (e) {}
+      }
+      ws.send(JSON.stringify({ ret: cmd, result: true }));
+      return;
+    }
+
+    // Default
+    ws.send(JSON.stringify({ ret: cmd || 'unknown', result: true }));
+  });
+
+  ws.on('close', () => {
+    if (deviceSn && aitDeviceSockets.get(deviceSn) === ws) {
+      aitDeviceSockets.delete(deviceSn);
+      console.log(`[ait-ws] Device ${deviceSn} disconnected`);
+    }
+  });
+});
+
+function aitFlushQueue(sn, ws) {
+  const key = (sn || '').toUpperCase();
+  const queue = deviceCmdQueue.get(key);
+  if (!queue || !queue.length || ws.readyState !== 1) return;
+  const batch = queue.splice(0, 10);
+  for (const item of batch) {
+    const m = item.cmd.match(/DATA UPDATE USERINFO (.+)/);
+    if (m) {
+      const fields = {};
+      m[1].split('\t').forEach(p => { const [k, ...v] = p.split('='); fields[k] = v.join('='); });
+      ws.send(JSON.stringify({
+        cmd: 'setuserinfo', enrollid: String(fields.PIN || ''), name: fields.Name || '',
+        backupnum: 0, admin: parseInt(fields.Pri) || 0, record: ''
+      }));
+    } else if (item.cmd.match(/DATA DEL USERINFO/)) {
+      const pin = item.cmd.match(/PIN=(\S+)/);
+      if (pin) ws.send(JSON.stringify({ cmd: 'deluserinfo', enrollid: String(pin[1]) }));
+    }
+  }
+  console.log(`[ait-ws] Flushed ${batch.length} commands to ${sn}, ${queue.length} remaining`);
+}
 
 // --- COOLDOWN (only after exit→re-entry, not on consecutive entries) ---
 const COOLDOWN_MS = parseInt(process.env.SCAN_COOLDOWN_MS || '180000');
@@ -2324,7 +2436,19 @@ app.post('/api/ait/command', requireAdmin, async (req, res) => {
 app.get('/api/ait/queue', requireAdmin, (req, res) => {
   const sn = AIT_DEVICE_SN[0];
   const queue = sn ? (deviceCmdQueue.get(sn.toUpperCase()) || []) : [];
-  res.json({ device: sn, pending: queue.length, commands: queue.slice(0, 50) });
+  const wsConnected = sn ? aitDeviceSockets.has(sn.toUpperCase()) : false;
+  res.json({ device: sn, pending: queue.length, wsConnected, commands: queue.slice(0, 50) });
+});
+
+// Force flush queue via WebSocket — POST /api/ait/flush
+app.post('/api/ait/flush', requireAdmin, (req, res) => {
+  const sn = AIT_DEVICE_SN[0];
+  if (!sn) return res.status(400).json({ error: 'No AIT device configured' });
+  const ws = aitDeviceSockets.get(sn.toUpperCase());
+  if (!ws || ws.readyState !== 1) return res.status(400).json({ error: 'Device not connected via WebSocket' });
+  aitFlushQueue(sn, ws);
+  const queue = deviceCmdQueue.get(sn.toUpperCase()) || [];
+  res.json({ success: true, remaining: queue.length });
 });
 
 // Device sends operation logs — POST /iclock/devicecmd?SN=xxx
