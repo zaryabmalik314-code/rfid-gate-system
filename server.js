@@ -2603,6 +2603,38 @@ async function start() {
     }
   }
 
+  // --- HEYSTAR / HF-IMS DEVICE INTEGRATION ---
+  const heystarRaw = [
+    express.json({ limit: '1mb' }),
+    express.urlencoded({ extended: true, limit: '1mb' }),
+    express.text({ type: '*/*', limit: '1mb' })
+  ];
+
+  function heystarLog(tag, req) {
+    console.log(`[HEYSTAR-${tag}] ${req.method} ${req.originalUrl}`);
+    console.log(`[HEYSTAR-${tag}] IP: ${req.ip}`);
+    console.log(`[HEYSTAR-${tag}] Content-Type: ${req.headers['content-type']}`);
+    console.log(`[HEYSTAR-${tag}] Headers: ${JSON.stringify(req.headers)}`);
+    console.log(`[HEYSTAR-${tag}] Query: ${JSON.stringify(req.query)}`);
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    console.log(`[HEYSTAR-${tag}] Body: ${body}`);
+  }
+
+  app.all('/api/heystar/records', heystarRaw, (req, res) => {
+    heystarLog('RECORDS', req);
+    res.json({ success: true, code: 0, msg: 'ok' });
+  });
+
+  app.all('/api/heystar/heartbeat', heystarRaw, (req, res) => {
+    heystarLog('HB', req);
+    res.json({ success: true, code: 0, msg: 'ok' });
+  });
+
+  app.all('/api/heystar/*', heystarRaw, (req, res) => {
+    heystarLog('CATCH', req);
+    res.json({ success: true, code: 0, msg: 'ok' });
+  });
+
   server.listen(PORT, () => {
     console.log(`\n  LGU Smart Gate System running on port ${PORT}`);
     console.log(`  Gate Kiosk (Entry): http://localhost:${PORT}/`);
