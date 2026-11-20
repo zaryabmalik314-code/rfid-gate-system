@@ -601,14 +601,14 @@ app.patch('/api/students/:id/status', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/students/:id', requireAdmin, async (req, res) => {
-  await run('DELETE FROM students WHERE id = $1', [req.params.id]);
-  res.json({ success: true });
-});
-
 app.delete('/api/students/bulk-unmapped', requireAdmin, async (req, res) => {
   const result = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-%'");
   res.json({ success: true, deleted: result.rowCount });
+});
+
+app.delete('/api/students/:id', requireAdmin, async (req, res) => {
+  await run('DELETE FROM students WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
 });
 
 // --- BULK IMPORT ---
