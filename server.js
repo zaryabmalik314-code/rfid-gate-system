@@ -602,8 +602,13 @@ app.patch('/api/students/:id/status', requireAdmin, async (req, res) => {
 });
 
 app.delete('/api/students/bulk-unmapped', requireAdmin, async (req, res) => {
-  const result = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-%'");
-  res.json({ success: true, deleted: result.rowCount });
+  let total = 0;
+  while (true) {
+    const result = await pool.query("DELETE FROM students WHERE id IN (SELECT id FROM students WHERE card_uid LIKE 'LGU-%' LIMIT 500)");
+    total += result.rowCount;
+    if (result.rowCount === 0) break;
+  }
+  res.json({ success: true, deleted: total });
 });
 
 app.delete('/api/students/:id', requireAdmin, async (req, res) => {
