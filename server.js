@@ -601,12 +601,6 @@ app.patch('/api/students/:id/status', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/students/cleanup-unmapped', requireAdmin, async (req, res) => {
-  const result = await pool.query("DELETE FROM students WHERE id IN (SELECT id FROM students WHERE card_uid LIKE 'LGU-%' LIMIT 200)");
-  const remaining = await pool.query("SELECT COUNT(*) as c FROM students WHERE card_uid LIKE 'LGU-%'");
-  res.json({ deleted: result.rowCount, remaining: parseInt(remaining.rows[0].c) });
-});
-
 app.delete('/api/students/:id', requireAdmin, async (req, res) => {
   await run('DELETE FROM students WHERE id = $1', [req.params.id]);
   res.json({ success: true });
