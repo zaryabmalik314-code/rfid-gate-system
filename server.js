@@ -606,6 +606,11 @@ app.delete('/api/students/:id', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
+app.delete('/api/students/bulk-unmapped', requireAdmin, async (req, res) => {
+  const result = await pool.query("DELETE FROM students WHERE card_uid LIKE 'LGU-%'");
+  res.json({ success: true, deleted: result.rowCount });
+});
+
 // --- BULK IMPORT ---
 function parseJoiningSession(session) {
   if (!session) return { enrollYear: null, expiryYear: null, semester: 1 };
